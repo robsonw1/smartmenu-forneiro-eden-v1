@@ -1442,8 +1442,9 @@ export function SchedulingCheckoutModal() {
   const maxDate = new Date(Date.now() + maxScheduleDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   // ✅ Calcular status da loja
+  // 🔑 IMPORTANTE: allowSchedulingOutsideBusinessHours permite agendamentos mesmo com loja fechada
   const storeOpen = isStoreOpen();
-  const isStoreClosed = !settings.isManuallyOpen || !storeOpen;
+  const isStoreClosed = !settings.isManuallyOpen || (!storeOpen && !settings.allowSchedulingOutsideBusinessHours);
 
   // 🔒 BLOQUEIO CRÍTICO: Se loja fechada, mostrar estado bloqueado
   useEffect(() => {
