@@ -124,7 +124,6 @@ const AdminDashboard = () => {
   const updateSettings = useSettingsStore((s) => s.updateSettings);
   const changePassword = useSettingsStore((s) => s.changePassword);
   const updateDaySchedule = useSettingsStore((s) => s.updateDaySchedule);
-  const toggleManualOpen = useSettingsStore((s) => s.toggleManualOpen);
   const isStoreOpen = useSettingsStore((s) => s.isStoreOpen);
 
   // Neighborhoods store
@@ -576,10 +575,9 @@ const AdminDashboard = () => {
   };
 
   const handleManualOpenToggle = async () => {
-    toggleManualOpen();
     const newState = !settings.isManuallyOpen;
     
-    // Salvar imediatamente no Supabase para sincronizar
+    // ✅ SINCRONIZAR para Supabase (ativa Realtime)
     await updateSettings({ isManuallyOpen: newState });
     
     toast.success(newState ? '✓ Loja aberta!' : '✗ Loja fechada!');
