@@ -2380,8 +2380,8 @@ export function SchedulingCheckoutModal() {
                   <Button 
                     className="btn-cta gap-2"
                     onClick={handleSubmitOrder}
-                    disabled={isProcessing || !storeOpen || !settings.isManuallyOpen}
-                    title={(!storeOpen || !settings.isManuallyOpen) ? '🔒 Loja fechada. Pedidos não permitidos.' : ''}
+                    disabled={isProcessing || ((!storeOpen || !settings.isManuallyOpen) && !settings.allowSchedulingOutsideBusinessHours)}
+                    title={((!storeOpen || !settings.isManuallyOpen) && !settings.allowSchedulingOutsideBusinessHours) ? '🔒 Loja fechada. Pedidos não permitidos.' : ''}
                   >
                     {isProcessing ? (
                       <>
@@ -2404,8 +2404,8 @@ export function SchedulingCheckoutModal() {
                   <Button 
                     className="btn-cta gap-2" 
                     onClick={nextStep}
-                    disabled={!storeOpen || !settings.isManuallyOpen}
-                    title={(!storeOpen || !settings.isManuallyOpen) ? '🔒 Loja fechada. Pedidos não permitidos.' : ''}
+                    disabled={(!storeOpen || !settings.isManuallyOpen) && !settings.allowSchedulingOutsideBusinessHours}
+                    title={((!storeOpen || !settings.isManuallyOpen) && !settings.allowSchedulingOutsideBusinessHours) ? '🔒 Loja fechada. Pedidos não permitidos.' : ''}
                   >
                     Continuar
                     <ArrowRight className="w-4 h-4" />
