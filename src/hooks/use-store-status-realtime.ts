@@ -3,52 +3,44 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Hook dedicado para monitorar mudanças de isManuallyOpen
- * Usado especificamente no CheckoutModal para atualizar em tempo real
- * enquanto o cliente está fazendo o pedido
+ * Hook que monitora APENAS isManuallyOpen em tempo real enquanto checkout aberto
+ * CRÍTICO: Sincroniza mudanças de "Abrir/Fechar Loja" instantaneamente
  */
 export function useStoreStatusRealtime(isCheckoutOpen: boolean) {
   const updateSettings = useSettingsStore((s) => s.updateSettings);
 
   useEffect(() => {
-    if (!isCheckoutOpen) return; // Só ativa se checkout está aberto
+    if (!isCheckoutOpen) return;
 
     let isSubscribed = true;
     let channel: any = null;
 
-    console.log('🛍️ [CHECKOUT-REALTIME] Ativando monitoramento de status da loja...');
+    console.log('🛍️ [CHECKOUT-REALTIME] ⚡ INICIANDO monitoramento isManuallyOpen');
 
     const setupRealtimeSync = async () => {
       try {
-        // Carregar status atual
         const { data, error } = await supabase
           .from('settings')
-          .select('enable_scheduling, min_schedule_minutes, max_schedule_days, allow_scheduling_on_closed_days, allow_scheduling_outside_business_hours')
+          .select('value')
           .eq('id', 'store-settings')
           .single();
 
         if (!error && data && isSubscribed) {
           const settingsData = data as any;
-          console.log('🛍️ [CHECKOUT-REALTIME] Status atual:', {
-            enableScheduling: settingsData.enable_scheduling,
-          });
+          const valueJson = settingsData.value || {};
+          console.log('🛍️ [CHECKOUT-REALTIME] isManuallyOpen ATUAL:', valueJson.isManuallyOpen);
 
           await updateSettings({
-            enableScheduling: settingsData.enable_scheduling ?? false,
-            minScheduleMinutes: settingsData.min_schedule_minutes ?? 30,
-            maxScheduleDays: settingsData.max_schedule_days ?? 7,
-            allowSchedulingOnClosedDays: settingsData.allow_scheduling_on_closed_days ?? false,
-            allowSchedulingOutsideBusinessHours: settingsData.allow_scheduling_outside_business_hours ?? false,
+            isManuallyOpen: valueJson.isManuallyOpen ?? true,
           });
         }
       } catch (error) {
-        console.error('❌ [CHECKOUT-REALTIME] Erro ao carregar status:', error);
+        console.error('❌ [CHECKOUT-REALTIME] Erro:', error);
       }
     };
 
     setupRealtimeSync();
 
-    // Subscrever a mudanças
     channel = supabase
       .channel(`checkout-status-${Date.now()}`)
       .on(
@@ -63,39 +55,27 @@ export function useStoreStatusRealtime(isCheckoutOpen: boolean) {
           if (!isSubscribed) return;
 
           const newData = payload.new as any;
+          const newValueJson = newData.value || {};
 
-          console.log('⚡ [CHECKOUT-REALTIME] MUDANÇA DETECTADA');
-          console.log('📊 [CHECKOUT-REALTIME] Novos dados:', {
-            enableScheduling: newData.enable_scheduling,
-            minScheduleMinutes: newData.min_schedule_minutes,
-          });
+          console.log('⚡⚡⚡ [CHECKOUT-REALTIME] MUDANÇA DETECTADA ⚡⚡⚡');
+          console.log('🔴 [CHECKOUT-REALTIME] NOVO isManuallyOpen:', newValueJson.isManuallyOpen);
 
-          // Atualizar campos críticos
           await updateSettings({
-            enableScheduling: newData.enable_scheduling ?? false,
-            minScheduleMinutes: newData.min_schedule_minutes ?? 30,
-            maxScheduleDays: newData.max_schedule_days ?? 7,
-            allowSchedulingOnClosedDays: newData.allow_scheduling_on_closed_days ?? false,
-            allowSchedulingOutsideBusinessHours: newData.allow_scheduling_outside_business_hours ?? false,
+            isManuallyOpen: newValueJson.isManuallyOpen ?? true,
           });
 
-          console.log('✅ [CHECKOUT-REALTIME] Status da loja atualizado em tempo real!');
+          console.log('✅✅✅ [CHECKOUT-REALTIME] isManuallyOpen SINCRONIZADO ✅✅✅');
         }
       )
-      .subscribe((status, error) => {
+      .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ [CHECKOUT-REALTIME] ⚡ Monitorando status da loja em tempo real');
-        } else if (status === 'CLOSED') {
-          console.log('🔴 [CHECKOUT-REALTIME] Monitoramento encerrado');
-        } else if (error) {
-          console.error('❌ [CHECKOUT-REALTIME] Erro:', error);
+          console.log('✅ [CHECKOUT-REALTIME] Monitorando isManuallyOpen');
         }
       });
 
     return () => {
       isSubscribed = false;
       if (channel) {
-        console.log('🛍️ [CHECKOUT-REALTIME] Desativando monitoramento');
         supabase.removeChannel(channel);
       }
     };
