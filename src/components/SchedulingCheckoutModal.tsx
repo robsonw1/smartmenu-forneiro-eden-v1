@@ -572,9 +572,14 @@ export function SchedulingCheckoutModal() {
   };
 
   const nextStep = () => {
-    // 🔒 BLOQUEIO: Se loja está fechada, NÃO permite avançar para próximos passos
-    if (!storeOpen || !settings.isManuallyOpen) {
-      toast.error(!settings.isManuallyOpen ? '🔒 Estabelecimento fechado manualmente. Não é possível fazer pedidos.' : '⏰ Estabelecimento fora do horário. Não é possível fazer pedidos.');
+    // 🔒 BLOQUEIO: Verificar se é realmente bloqueante (não permite agendamento quando fechada)
+    // Se allowSchedulingOutsideBusinessHours está ATIVADO, permite prosseguir mesmo com loja fechada
+    if (!settings.isManuallyOpen && !settings.allowSchedulingOutsideBusinessHours) {
+      toast.error('🔒 Estabelecimento fechado. Agendamentos não permitidos.');
+      return;
+    }
+    if (!storeOpen && !settings.allowSchedulingOutsideBusinessHours) {
+      toast.error('⏰ Estabelecimento fora do horário. Agendamentos não permitidos.');
       return;
     }
     
@@ -1005,21 +1010,18 @@ export function SchedulingCheckoutModal() {
 
   const handleSubmitOrder = async () => {
     // � PROTEÇÃO CRÍTICA #1: Se loja está fechada manualmente, BLOQUEIA IMEDIATAMENTE
-    if (!settings.isManuallyOpen) {
-      console.error('🚫 [SCHEDULING] BLOQUEIO CRÍTICO: isManuallyOpen = false');
-      toast.error('🔒 ESTABELECIMENTO FECHADO MANUALMENTE! Não é possível agendar.');
-      return; // PARA AQUI - não continua
+    if (!settings.isManuallyOpen && !settings.allowSchedulingOutsideBusinessHours) {
+      console.error('🚫 [SCHEDULING] BLOQUEIO: isManuallyOpen = false E allowSchedulingOutsideBusinessHours = false');
+      toast.error('🔒 Estabelecimento fechado manualmente. Agendamentos não são permitidos.');
+      return;
     }
 
-    // 🚫 PROTEÇÃO CRÍTICA #2: Recalcular se loja está aberta agora
+    // 🚫 PROTEÇÃO CRÍTICA #2: Se loja está FORA DO HORÁRIO, BLOQUEIA SOMENTE se não permite agendamentos
     const currentStoreOpen = isStoreOpen();
     if (!currentStoreOpen && !settings.allowSchedulingOutsideBusinessHours) {
-      const isScheduledToday = scheduledDate === new Date().toISOString().split('T')[0];
-      if (!isScheduledToday || !settings.allowSameDaySchedulingOutsideHours) {
-        console.error('🚫 [SCHEDULING] BLOQUEIO CRÍTICO: Fora do horário e sem permissão');
-        toast.error('⏰ ESTABELECIMENTO FORA DO HORÁRIO! Agendamento não permitido.');
-        return; // PARA AQUI - não continua
-      }
+      console.error('🚫 [SCHEDULING] BLOQUEIO: Fora do horário E allowSchedulingOutsideBusinessHours = false');
+      toast.error('⏰ Estabelecimento fora do horário. Agendamento não permitido.');
+      return;
     }
 
     console.log('✅ [SCHEDULING] Validações passaram - Processando agendamento');
@@ -2435,3 +2437,4 @@ export function SchedulingCheckoutModal() {
     </>
   );
 }
+
