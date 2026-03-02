@@ -541,16 +541,19 @@ const AdminDashboard = () => {
   }, [orders, dateRange, orderStatusFilter, orderSort]);
 
   const handleSaveSettings = async () => {
-    // Atualizar o store e salvar no Supabase
-    console.log('💾 [ADMIN] Salvando configurações:', {
+    // ✅ CRÍTICO: Garantir que schedule está incluído
+    console.log('💾 [ADMIN] Salvando configurações COMPLETAS:', {
       phone: settingsForm.phone,
       sendOrderSummaryToWhatsApp: settingsForm.sendOrderSummaryToWhatsApp,
+      schedule: settingsForm.schedule, // VERIFICAR SE SCHEDULE ESTÁ AQUI
     });
+    
+    // Atualizar com TODOS os settings (incluindo schedule)
     await updateSettings(settingsForm);
     
     // Force settings refresh in CheckoutModal
     localStorage.setItem('settings-updated', Date.now().toString());
-    console.log('✅ [ADMIN] Configurações salvas e sincronizadas');
+    console.log('✅ [ADMIN] Configurações COMPLETAS salvas:', settingsForm.schedule);
     
     toast.success('Configurações salvas com sucesso!');
   };
