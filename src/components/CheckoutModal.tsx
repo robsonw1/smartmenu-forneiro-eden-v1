@@ -118,6 +118,7 @@ export function CheckoutModal() {
   const [appliedCoupon, setAppliedCoupon] = useState<string>('');
   const [couponValidationMessage, setCouponValidationMessage] = useState<string>('');
   const [tenantId, setTenantId] = useState<string>('');
+  const [storeOpen, setStoreOpen] = useState<boolean>(false);
 
   const validateAndUseCoupon = useCouponManagementStore((s) => s.validateAndUseCoupon);
   const markCouponAsUsed = useCouponManagementStore((s) => s.markCouponAsUsed);
@@ -141,6 +142,16 @@ export function CheckoutModal() {
 
   // ⚡ REALTIME: Sincronizar configurações do admin em tempo real (schedule, horários, etc)
   useSettingsRealtimeSync();
+
+  // ⏰ REATIVO: Recalcular storeOpen sempre que settings mudam
+  useEffect(() => {
+    const newStoreStatus = isStoreOpen();
+    setStoreOpen(newStoreStatus);
+    console.log('🔄 [CHECKOUT] storeOpen recalculado:', newStoreStatus, 'Settings:', {
+      isManuallyOpen: settings.isManuallyOpen,
+      currentDay: new Date().toLocaleDateString('pt-BR', { weekday: 'long' }),
+    });
+  }, [settings, isStoreOpen]);
 
   // ✅ Função para formatar telefone
   const formatPhoneNumber = (phone: string): string => {
@@ -1373,7 +1384,7 @@ export function CheckoutModal() {
     }
   };
 
-  const storeOpen = isStoreOpen();
+  // 🔒 Usar estado reativo de storeOpen que é atualizado quando settings mudam
   const isStoreClosed = !settings.isManuallyOpen || !storeOpen;
 
   // 🔒 BLOQUEIO CRÍTICO: Se loja fechada, mostrar estado bloqueado
