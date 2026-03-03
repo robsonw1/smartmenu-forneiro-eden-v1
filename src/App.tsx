@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { useSettingsRealtimeSync } from "@/hooks/use-settings-realtime-sync";
 import { useSettingsInitialLoad } from "@/hooks/use-settings-initial-load";
+import { useScheduleSync } from "@/hooks/use-schedule-sync";
+import { useSettingsUpdateListener } from "@/hooks/use-settings-update-listener";
 import { useLoyaltySettingsStore } from "@/store/useLoyaltySettingsStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import Index from "./pages/Index.tsx";
@@ -21,6 +23,8 @@ const AppContent = () => {
   useRealtimeSync();
   useSettingsInitialLoad();
   useSettingsRealtimeSync();
+  useScheduleSync();
+  useSettingsUpdateListener(); // ✅ Monitorar atualizações do admin
   const { loadSettings } = useLoyaltySettingsStore();
 
   // Carregar configurações de fidelização ao iniciar

@@ -150,6 +150,7 @@ const AdminDashboard = () => {
 
   // Local state for settings form
   const [settingsForm, setSettingsForm] = useState(settings);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     current: '',
     new: '',
@@ -178,10 +179,16 @@ const AdminDashboard = () => {
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
   const [orderSort, setOrderSort] = useState<'newest' | 'oldest'>('newest');
 
-  // Sincronizar settingsForm quando settings mudam (do Supabase real-time)
+  // ✅ CORRIGIDO: Sincronizar settingsForm APENAS se NÃO há edições pendentes
+  // Isso previne que realtime sobrescreva o que admin está editando
   useEffect(() => {
-    setSettingsForm(settings);
-  }, [settings]);
+    if (!hasUnsavedChanges) {
+      console.log('🔄 [ADMIN] Atualizando settingsForm com dados do Supabase');
+      setSettingsForm(settings);
+    } else {
+      console.log('⚠️  [ADMIN] Ignorando atualização - há edições pendentes não salvas');
+    }
+  }, [settings, hasUnsavedChanges]);
 
   useEffect(() => {
     const token = localStorage.getItem('admin-token');
@@ -541,26 +548,35 @@ const AdminDashboard = () => {
   }, [orders, dateRange, orderStatusFilter, orderSort]);
 
   const handleSaveSettings = async () => {
-    // ✅ CRÍTICO: Forçar sincronização do settingsForm com settings ATUAL do store
-    // Isso garante que qualquer alteração de schedule feita via updateDaySchedule seja incluída
-    const currentSettings = useSettingsStore.getState().settings;
+    // ✅ CRÍTICO: Usar o settingsForm (que tem as edições locais do admin)
+    // E garantir que o schedule SEMPRE tem todos os 7 dias
     const finalSettingsToSave = {
       ...settingsForm,
-      schedule: currentSettings.schedule, // SEMPRE use o schedule ATUAL do store
+      // ✅ SEMPRE validar que schedule tem todos os 7 dias
+      schedule: settingsForm.schedule || {
+        monday: { isOpen: false, openTime: '18:00', closeTime: '23:00' },
+        tuesday: { isOpen: true, openTime: '18:00', closeTime: '23:00' },
+        wednesday: { isOpen: true, openTime: '18:00', closeTime: '23:00' },
+        thursday: { isOpen: true, openTime: '18:00', closeTime: '23:00' },
+        friday: { isOpen: true, openTime: '18:00', closeTime: '23:00' },
+        saturday: { isOpen: true, openTime: '17:00', closeTime: '00:00' },
+        sunday: { isOpen: true, openTime: '17:00', closeTime: '23:00' },
+      },
     };
     
-    console.log('💾 [ADMIN] Salvando configurações FINAIS:', {
+    console.log('💾 [ADMIN] Salvando configurações FINAIS com schedule COMPLETO:', {
       phone: finalSettingsToSave.phone,
       sendOrderSummaryToWhatsApp: finalSettingsToSave.sendOrderSummaryToWhatsApp,
-      schedule: finalSettingsToSave.schedule, // VERIFICAR SE SCHEDULE ESTÁ AQUI
+      scheduleCompleto: finalSettingsToSave.schedule,
     });
     
-    // Atualizar com TODOS os settings (incluindo schedule ATUALIZADO)
+    // Atualizar com TODOS os settings (incluindo schedule COMPLETO)
     await updateSettings(finalSettingsToSave);
     
     // Force settings refresh in CheckoutModal
     localStorage.setItem('settings-updated', Date.now().toString());
-    console.log('✅ [ADMIN] Configurações FINAIS salvas:', finalSettingsToSave.schedule);
+    setHasUnsavedChanges(false); // ✅ Limpar flag de edições pendentes após salvar
+    console.log('✅ [ADMIN] Configurações FINAIS salvas com schedule COMPLETO:', finalSettingsToSave.schedule);
     
     toast.success('Configurações salvas com sucesso!');
   };
@@ -580,6 +596,17 @@ const AdminDashboard = () => {
   };
 
   const handleDayScheduleChange = (day: string, updates: any) => {
+    // ✅ Atualizar settingsForm localmente PRIMEIRO (antes de enviar para Zustand)
+    setSettingsForm(prevForm => ({
+      ...prevForm,
+      schedule: {
+        ...prevForm.schedule,
+        [day]: { ...prevForm.schedule[day], ...updates },
+      },
+    }));
+    setHasUnsavedChanges(true);
+    
+    // Depois sincronizar para Zustand (que vai para Supabase)
     updateDaySchedule(day as any, updates);
     toast.info(`✏️ Alteração em ${dayLabels[day]} - Clique em "Salvar Alterações" para confirmar`);
   };
