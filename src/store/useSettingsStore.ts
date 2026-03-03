@@ -178,16 +178,18 @@ export const useSettingsStore = create<SettingsStore>()(
       },
     }));
     
-    // ✅ SINCRONIZAR para Supabase
+    // ✅ SINCRONIZAR para Supabase - SALVANDO O SCHEDULE COMPLETO
     setTimeout(async () => {
       try {
         const { settings: currentSettings } = useSettingsStore.getState();
+        
+        // ✅ CRÍTICO: Enviar SEMPRE o schedule COMPLETO (todos os 7 dias)
         const settingsValue = {
           name: currentSettings.name,
           phone: currentSettings.phone,
           address: currentSettings.address,
           slogan: currentSettings.slogan,
-          schedule: currentSettings.schedule,
+          schedule: currentSettings.schedule, // ✅ SCHEDULE COMPLETO COM TODOS OS 7 DIAS
           deliveryTimeMin: currentSettings.deliveryTimeMin,
           deliveryTimeMax: currentSettings.deliveryTimeMax,
           pickupTimeMin: currentSettings.pickupTimeMin,
@@ -197,7 +199,11 @@ export const useSettingsStore = create<SettingsStore>()(
           sendOrderSummaryToWhatsApp: currentSettings.sendOrderSummaryToWhatsApp,
         };
 
-        // ✅ OPÇÃO B: Atualizar com colunas normalizadas
+        console.log('💾 [UPDATE-DAY-SCHEDULE] Salvando schedule COMPLETO para dia:', day, {
+          scheduleCompleto: settingsValue.schedule,
+        });
+
+        // ✅ OPÇÃO B: Atualizar com colunas normalizadas + JSON
         await supabase
           .from('settings')
           .update({ 
@@ -207,7 +213,7 @@ export const useSettingsStore = create<SettingsStore>()(
           })
           .eq('id', 'store-settings');
 
-        console.log('✅ schedule sincronizado no Supabase para', day);
+        console.log('✅ Schedule COMPLETO sincronizado no Supabase para', day);
       } catch (error) {
         console.error('❌ Erro ao sincronizar schedule:', error);
       }
