@@ -135,7 +135,8 @@ export function SchedulingCheckoutModal() {
   const [appliedCoupon, setAppliedCoupon] = useState<string>('');
   const [couponValidationMessage, setCouponValidationMessage] = useState<string>('');
   const [tenantId, setTenantId] = useState<string>('');
-  const [storeOpen, setStoreOpen] = useState<boolean>(false);
+  const [storeOpen, setStoreOpen] = useState<boolean>(false); // ⚠️ DEFAULT FALSE (mais seguro) até dados carregarem
+  const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false);
 
   const validateAndUseCoupon = useCouponManagementStore((s) => s.validateAndUseCoupon);
   const markCouponAsUsed = useCouponManagementStore((s) => s.markCouponAsUsed);
@@ -161,6 +162,24 @@ export function SchedulingCheckoutModal() {
     tenantId
   );
 
+  // ✅ CRÍTICO: Marcar quando settings foram carregados (com schedule completo)
+  useEffect(() => {
+    const hasCompleteSchedule = settings?.schedule && Object.keys(settings.schedule).length === 7;
+    if (hasCompleteSchedule && !settingsLoaded) {
+      console.log('✅ [CHECKOUT] Settings carregados com schedule COMPLETO');
+      setSettingsLoaded(true);
+    }
+  }, [settings]); // ⚠️ SEM settingsLoaded na dependência para evitar loops
+
+  // 🔄 RESET: Quando modal fecha, resetar settingsLoaded para próxima abertura
+  useEffect(() => {
+    if (!isSchedulingCheckoutOpen && settingsLoaded) {
+      console.log('🔄 [CHECKOUT] Modal fechou, resetando settingsLoaded');
+      setSettingsLoaded(false);
+      setStoreOpen(false); // ⚠️ Reseta storeOpen também por segurança
+    }
+  }, [isSchedulingCheckoutOpen, settingsLoaded]);
+
   // ⚡ REALTIME: Monitorar status da loja em tempo real (abrir/fechar + horários)
   useStoreStatusRealtime(isSchedulingCheckoutOpen);
 
@@ -170,6 +189,13 @@ export function SchedulingCheckoutModal() {
   // ⏰ REATIVO ROBUSTO: Recalcular storeOpen quando settings mudam + intervalo de 2s
   useEffect(() => {
     if (!isSchedulingCheckoutOpen) return;
+    
+    // ✅ CRÍTICO: NÃO calcular storeOpen até que os dados tenham sido carregados completos
+    if (!settingsLoaded) {
+      console.log('⏳ [CHECKOUT] Aguardando settings completos (schedule com 7 dias)...');
+      setStoreOpen(false); // ⚠️ Manter como false até dados chegarem (seguro)
+      return;
+    }
     
     // Função para recalcular status
     const recalculateStoreOpen = () => {
@@ -189,7 +215,7 @@ export function SchedulingCheckoutModal() {
       });
     };
 
-    // 1️⃣ Recalcular imediatamente quando checkout abre
+    // 1️⃣ Recalcular imediatamente quando checkout abre (com dados carregados)
     recalculateStoreOpen();
 
     // 2️⃣ Se inscrever nas mudanças de settings via Zustand
@@ -209,7 +235,7 @@ export function SchedulingCheckoutModal() {
       unsubscribe();
       clearInterval(interval);
     };
-  }, [isSchedulingCheckoutOpen, isStoreOpen, settings]);
+  }, [isSchedulingCheckoutOpen, isStoreOpen, settings, settingsLoaded]);
 
   // ✅ Função para formatar telefone
   const formatPhoneNumber = (phone: string): string => {
