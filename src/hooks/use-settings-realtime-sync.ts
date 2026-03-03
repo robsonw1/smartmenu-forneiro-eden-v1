@@ -49,7 +49,8 @@ export function useSettingsRealtimeSync() {
           };
           
           console.log('👀 [SETTINGS-SYNC] is_manually_open:', settingsData.is_manually_open);
-          console.log('⏰ [SETTINGS-SYNC] schedule:', loadedSchedule);
+          console.log('⏰ [SETTINGS-SYNC] schedule carregado:', loadedSchedule);
+          console.log('📊 [SETTINGS-SYNC] Dias no schedule:', Object.keys(loadedSchedule));
 
           // ✅ OPÇÃO B: Ler de colunas normalizadas + JSON para dados complexos
           await updateSettings({
@@ -119,11 +120,10 @@ export function useSettingsRealtimeSync() {
           };
           
           console.log('🔴 [SETTINGS-SYNC] NOVO is_manually_open:', newData.is_manually_open);
-          console.log('📊 [SETTINGS-SYNC] Novos dados completos:', {
-            is_manually_open: newData.is_manually_open,
-            schedule: newLoadedSchedule,
-            enable_scheduling: newData.enable_scheduling,
-          });
+          console.log('� [SETTINGS-SYNC] Novos horários carregados:', Object.entries(newLoadedSchedule).reduce((acc: any, [day, schedule]: any) => {
+            acc[day] = `${schedule.openTime}-${schedule.closeTime}`;
+            return acc;
+          }, {}));
 
           // ✅ OPÇÃO B: Atualizar de colunas normalizadas + JSON
           await updateSettings({
