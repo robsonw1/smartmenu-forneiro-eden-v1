@@ -167,16 +167,25 @@ export function SchedulingCheckoutModal() {
   // ⚡ REALTIME: Sincronizar configurações do admin em tempo real (schedule, horários, etc)
   useSettingsRealtimeSync();
 
-  // ⏰ REATIVO ROBUSTO: Recalcular storeOpen quando settings mudam + intervalo de 5s
+  // ⏰ REATIVO ROBUSTO: Recalcular storeOpen quando settings mudam + intervalo de 2s
   useEffect(() => {
+    if (!isSchedulingCheckoutOpen) return;
+    
     // Função para recalcular status
     const recalculateStoreOpen = () => {
       const newStoreStatus = isStoreOpen();
+      const oldStatus = storeOpen;
+      
+      if (newStoreStatus !== oldStatus) {
+        console.log('📊 [CHECKOUT] storeOpen mudou de', oldStatus, 'para', newStoreStatus);
+      }
+      
       setStoreOpen(newStoreStatus);
-      console.log('🔄 [SCHEDULING-CHECKOUT] storeOpen recalculado:', newStoreStatus, 'Horário:', {
+      console.log('🔄 [CHECKOUT] storeOpen recalculado:', newStoreStatus, 'Horário:', {
         hora: new Date().toLocaleTimeString('pt-BR'),
         dia: new Date().toLocaleDateString('pt-BR', { weekday: 'long' }),
         isManuallyOpen: settings.isManuallyOpen,
+        daySchedule: settings.schedule ? settings.schedule[['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][new Date().getDay()]] : 'N/A',
       });
     };
 
@@ -185,19 +194,22 @@ export function SchedulingCheckoutModal() {
 
     // 2️⃣ Se inscrever nas mudanças de settings via Zustand
     const unsubscribe = useSettingsStore.subscribe(
-      () => recalculateStoreOpen()
+      (newState) => {
+        console.log('⚡ [CHECKOUT] Settings mudaram, recalculando storeOpen');
+        recalculateStoreOpen();
+      }
     );
 
-    // 3️⃣ Verificar a cada 5 segundos (MUITO MAIS RÁPIDO - cliente pega mudanças quase imediatamente)
+    // 3️⃣ Verificar a cada 2 segundos (RÁPIDO - cliente pega mudanças imediatamente)
     const interval = setInterval(() => {
       recalculateStoreOpen();
-    }, 5000); // 5 segundos
+    }, 2000); // 2 segundos
 
     return () => {
       unsubscribe();
       clearInterval(interval);
     };
-  }, [isSchedulingCheckoutOpen]); // Só depende de isSchedulingCheckoutOpen
+  }, [isSchedulingCheckoutOpen, isStoreOpen, settings]);
 
   // ✅ Função para formatar telefone
   const formatPhoneNumber = (phone: string): string => {
@@ -2411,8 +2423,8 @@ export function SchedulingCheckoutModal() {
                   <Button 
                     className="btn-cta gap-2"
                     onClick={handleSubmitOrder}
-                    disabled={isProcessing || ((!storeOpen || !settings.isManuallyOpen) && !settings.allowSchedulingOutsideBusinessHours)}
-                    title={((!storeOpen || !settings.isManuallyOpen) && !settings.allowSchedulingOutsideBusinessHours) ? '🔒 Loja fechada. Pedidos não permitidos.' : ''}
+                    disabled={isProcessing || !storeOpen}
+                    title={!storeOpen ? '🔒 Loja fechada no momento. Pedidos não permitidos.' : ''}
                   >
                     {isProcessing ? (
                       <>
@@ -2435,8 +2447,8 @@ export function SchedulingCheckoutModal() {
                   <Button 
                     className="btn-cta gap-2" 
                     onClick={nextStep}
-                    disabled={(!storeOpen || !settings.isManuallyOpen) && !settings.allowSchedulingOutsideBusinessHours}
-                    title={((!storeOpen || !settings.isManuallyOpen) && !settings.allowSchedulingOutsideBusinessHours) ? '🔒 Loja fechada. Pedidos não permitidos.' : ''}
+                    disabled={!storeOpen}
+                    title={!storeOpen ? '🔒 Loja fechada no momento. Pedidos não permitidos.' : ''}
                   >
                     Continuar
                     <ArrowRight className="w-4 h-4" />
