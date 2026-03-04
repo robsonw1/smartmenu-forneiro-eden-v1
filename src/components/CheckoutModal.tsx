@@ -1000,7 +1000,15 @@ export function CheckoutModal() {
 
   const handleSubmitOrder = async () => {
     // � PROTEÇÃO CRÍTICA #1: Se loja está fechada, BLOQUEIA IMEDIATAMENTE - sem processamento
-    // All time-based restrictions removed
+    if (!storeOpen || !settings.isManuallyOpen) {
+      toast.error(
+        !settings.isManuallyOpen 
+          ? '🔒 Estabelecimento fechado manualmente. Não é possível fazer pedidos agora.'
+          : '⏰ Estabelecimento fora do horário de funcionamento. Volte mais tarde.'
+      );
+      return;
+    }
+    
     console.log('✅ [CHECKOUT] Processando pedido');
     if (!validateStep('payment')) return;
     
@@ -1451,13 +1459,15 @@ export function CheckoutModal() {
               </div>
             )}
 
-            {/* Store Closed Alert */}
-            {(!storeOpen || !settings.isManuallyOpen) && step === 'confirmation' && (
-              <Alert variant="destructive" className="mt-4">
+            {/* Store Closed Alert - ALL STEPS */}
+            {(!storeOpen || !settings.isManuallyOpen) && (
+              <Alert variant="destructive" className="mt-4 border-2 border-red-600">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>{!settings.isManuallyOpen ? '🔒 Estabelecimento Fechado Manualmente.' : '⏰ Fora do Horário de Funcionamento.'}</strong> {!settings.isManuallyOpen ? 'Não é possível fazer pedidos no momento.' : 'Nossa loja não está aberta agora.'}
-                  Consulte nosso horário de funcionamento.
+                  <strong>{!settings.isManuallyOpen ? '🔒 Estabelecimento Fechado Manualmente.' : '⏰ Fora do Horário de Funcionamento.'}</strong><br/>
+                  {!settings.isManuallyOpen 
+                    ? 'Não é possível fazer pedidos no momento. Volte em breve!' 
+                    : 'Nossa loja não está aberta agora. Consulte nosso horário de funcionamento.'}
                 </AlertDescription>
               </Alert>
             )}
@@ -2219,7 +2229,8 @@ export function CheckoutModal() {
                   <Button 
                     className="btn-cta gap-2"
                     onClick={handleSubmitOrder}
-                    disabled={isProcessing}
+                    disabled={isProcessing || !storeOpen || !settings.isManuallyOpen}
+                    title={(!storeOpen || !settings.isManuallyOpen) ? (!settings.isManuallyOpen ? '🔒 Estabelecimento fechado' : '⏰ Fora do horário de funcionamento') : ''}
                   >
                     {isProcessing ? (
                       <>
@@ -2242,6 +2253,8 @@ export function CheckoutModal() {
                   <Button 
                     className="btn-cta gap-2" 
                     onClick={nextStep}
+                    disabled={!storeOpen || !settings.isManuallyOpen}
+                    title={(!storeOpen || !settings.isManuallyOpen) ? (!settings.isManuallyOpen ? '🔒 Estabelecimento fechado' : '⏰ Fora do horário de funcionamento') : ''}
                   >
                     Continuar
                     <ArrowRight className="w-4 h-4" />
