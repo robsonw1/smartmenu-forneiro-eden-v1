@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
  * Sincroniza TUDO: isManuallyOpen, schedule, horários, etc
  */
 export function useSettingsInitialLoad() {
-  const updateSettings = useSettingsStore((s) => s.updateSettings);
+  const loadSettingsLocally = useSettingsStore((s) => s.loadSettingsLocally);
   const hasLoaded = useRef(false);
 
   useEffect(() => {
@@ -50,8 +50,8 @@ export function useSettingsInitialLoad() {
             enable_scheduling: settingsData.enable_scheduling,
           });
 
-          // Atualizar o store com TODOS os valores do Supabase
-          await updateSettings({
+          // ✅ NOVO: Usar loadSettingsLocally (SÓ em memória, SEM resalvar)
+          loadSettingsLocally({
             // Do JSON 'value'
             name: valueJson.name || 'Forneiro Éden',
             phone: valueJson.phone || '(11) 99999-9999',
@@ -84,5 +84,5 @@ export function useSettingsInitialLoad() {
     };
 
     loadSettings();
-  }, [updateSettings]);
+  }, [loadSettingsLocally]);
 }
