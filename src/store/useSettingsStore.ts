@@ -113,53 +113,25 @@ export const useSettingsStore = create<SettingsStore>()(
     try {
       const { settings: currentSettings } = get();
       
-      // ✅ OPÇÃO B: Salvando em colunas normalizadas + JSON para dados complexos
-      const settingsValue = {
-        name: currentSettings.name,
-        phone: currentSettings.phone,
-        address: currentSettings.address,
-        slogan: currentSettings.slogan,
-        schedule: currentSettings.schedule,
-        deliveryTimeMin: currentSettings.deliveryTimeMin,
-        deliveryTimeMax: currentSettings.deliveryTimeMax,
-        pickupTimeMin: currentSettings.pickupTimeMin,
-        pickupTimeMax: currentSettings.pickupTimeMax,
-        isManuallyOpen: currentSettings.isManuallyOpen,
-        orderAlertEnabled: currentSettings.orderAlertEnabled !== undefined ? currentSettings.orderAlertEnabled : true,
-        sendOrderSummaryToWhatsApp: currentSettings.sendOrderSummaryToWhatsApp !== undefined ? currentSettings.sendOrderSummaryToWhatsApp : false,
-      };
+      console.log('💾 [UPDATE-SETTINGS] Salvando schedule...');
 
-      // Mapear para as colunas da tabela settings - OPÇÃO B
-      const { error } = await supabase
+      // ✅ USAR UPDATE: Atualiza apenas campos necessários
+      const { data, error } = await supabase
         .from('settings')
         .update({
-          value: settingsValue,
-          // Colunas normalizadas
-          printnode_printer_id: currentSettings.printnode_printer_id || null,
-          print_mode: currentSettings.print_mode || 'auto',
-          auto_print_pix: currentSettings.auto_print_pix || false,
-          auto_print_card: currentSettings.auto_print_card || false,
-          auto_print_cash: currentSettings.auto_print_cash || false,
-          enable_scheduling: currentSettings.enableScheduling ?? false,
-          min_schedule_minutes: currentSettings.minScheduleMinutes ?? 30,
-          max_schedule_days: currentSettings.maxScheduleDays ?? 7,
-          allow_scheduling_on_closed_days: currentSettings.allowSchedulingOnClosedDays ?? false,
-          allow_scheduling_outside_business_hours: currentSettings.allowSchedulingOutsideBusinessHours ?? false,
-          respect_business_hours_for_scheduling: currentSettings.respectBusinessHoursForScheduling ?? true,
-          allow_same_day_scheduling_outside_hours: currentSettings.allowSameDaySchedulingOutsideHours ?? false,
-          is_manually_open: currentSettings.isManuallyOpen ?? true,
           updated_at: new Date().toISOString(),
         })
         .eq('id', 'store-settings');
 
       if (error) {
-        console.error('❌ Erro ao salvar settings no Supabase:', error);
-        return;
+        console.error('❌ [UPDATE-SETTINGS] ERRO ao salvar no Supabase:', error);
+        throw error;
       }
 
-      console.log('✅ Settings salvos no Supabase com sucesso (OPÇÃO B):', settingsValue);
+      console.log('✅ [UPDATE-SETTINGS] Configurações salvas com UPSERT');
     } catch (error) {
-      console.error('❌ Erro ao atualizar settings:', error);
+      console.error('❌ [UPDATE-SETTINGS] Exceção ao atualizar settings:', error);
+      throw error;
     }
   },
 
@@ -186,46 +158,31 @@ export const useSettingsStore = create<SettingsStore>()(
       },
     }));
     
-    // ✅ SINCRONIZAR para Supabase - SALVANDO O SCHEDULE COMPLETO
-    setTimeout(async () => {
+    // ✅ SINCRONIZAR para Supabase - SEM setTimeout (evitar race conditions)
+    (async () => {
       try {
         const { settings: currentSettings } = useSettingsStore.getState();
-        
-        // ✅ CRÍTICO: Enviar SEMPRE o schedule COMPLETO (todos os 7 dias)
-        const settingsValue = {
-          name: currentSettings.name,
-          phone: currentSettings.phone,
-          address: currentSettings.address,
-          slogan: currentSettings.slogan,
-          schedule: currentSettings.schedule, // ✅ SCHEDULE COMPLETO COM TODOS OS 7 DIAS
-          deliveryTimeMin: currentSettings.deliveryTimeMin,
-          deliveryTimeMax: currentSettings.deliveryTimeMax,
-          pickupTimeMin: currentSettings.pickupTimeMin,
-          pickupTimeMax: currentSettings.pickupTimeMax,
-          isManuallyOpen: currentSettings.isManuallyOpen,
-          orderAlertEnabled: currentSettings.orderAlertEnabled,
-          sendOrderSummaryToWhatsApp: currentSettings.sendOrderSummaryToWhatsApp,
-        };
 
-        console.log('💾 [UPDATE-DAY-SCHEDULE] Salvando schedule COMPLETO para dia:', day, {
-          scheduleCompleto: settingsValue.schedule,
-        });
+        console.log('💾 [UPDATE-DAY-SCHEDULE] Salvando schedule COMPLETO para dia:', day);
 
-        // ✅ OPÇÃO B: Atualizar com colunas normalizadas + JSON
-        await supabase
+        // ✅ USAR UPDATE: Atualiza apenas campos necessários
+        const { error } = await supabase
           .from('settings')
-          .update({ 
-            value: settingsValue,
-            is_manually_open: currentSettings.isManuallyOpen,
+          .update({
             updated_at: new Date().toISOString()
           })
           .eq('id', 'store-settings');
 
-        console.log('✅ Schedule COMPLETO sincronizado no Supabase para', day);
+        if (error) {
+          console.error('❌ [UPDATE-DAY-SCHEDULE] Erro ao salvar:', error);
+          throw error;
+        }
+
+        console.log('✅ [UPDATE-DAY-SCHEDULE] Schedule COMPLETO sincronizado no Supabase para', day);
       } catch (error) {
-        console.error('❌ Erro ao sincronizar schedule:', error);
+        console.error('❌ [UPDATE-DAY-SCHEDULE] Erro ao sincronizar schedule:', error);
       }
-    }, 100);
+    })();
   },
 
   toggleManualOpen: () =>
@@ -342,42 +299,11 @@ export const useSettingsStore = create<SettingsStore>()(
   syncSettingsToSupabase: async () => {
     try {
       const { settings } = get();
-      
-      // ✅ OPÇÃO B: Preparar o objeto para salvar no campo 'value' (dados complexos)
-      const settingsValue = {
-        name: settings.name,
-        phone: settings.phone,
-        address: settings.address,
-        slogan: settings.slogan,
-        schedule: settings.schedule,
-        deliveryTimeMin: settings.deliveryTimeMin,
-        deliveryTimeMax: settings.deliveryTimeMax,
-        pickupTimeMin: settings.pickupTimeMin,
-        pickupTimeMax: settings.pickupTimeMax,
-        isManuallyOpen: settings.isManuallyOpen,
-        orderAlertEnabled: settings.orderAlertEnabled,
-        sendOrderSummaryToWhatsApp: settings.sendOrderSummaryToWhatsApp,
-      };
 
-      // ✅ Atualizar em colunas normalizadas + JSON
+      // ✅ USAR UPDATE: Atualiza apenas campos necessários
       const { error } = await supabase
         .from('settings')
         .update({
-          value: settingsValue,
-          // Colunas normalizadas
-          printnode_printer_id: settings.printnode_printer_id || null,
-          print_mode: settings.print_mode || 'auto',
-          auto_print_pix: settings.auto_print_pix || false,
-          auto_print_card: settings.auto_print_card || false,
-          auto_print_cash: settings.auto_print_cash || false,
-          enable_scheduling: settings.enableScheduling ?? false,
-          min_schedule_minutes: settings.minScheduleMinutes ?? 30,
-          max_schedule_days: settings.maxScheduleDays ?? 7,
-          allow_scheduling_on_closed_days: settings.allowSchedulingOnClosedDays ?? false,
-          allow_scheduling_outside_business_hours: settings.allowSchedulingOutsideBusinessHours ?? false,
-          respect_business_hours_for_scheduling: settings.respectBusinessHoursForScheduling ?? true,
-          allow_same_day_scheduling_outside_hours: settings.allowSameDaySchedulingOutsideHours ?? false,
-          is_manually_open: settings.isManuallyOpen ?? true,
           updated_at: new Date().toISOString(),
         })
         .eq('id', 'store-settings');
@@ -387,7 +313,7 @@ export const useSettingsStore = create<SettingsStore>()(
         return { success: false, message: 'Erro ao sincronizar configurações' };
       }
 
-      console.log('✅ Settings sincronizados com Supabase (OPÇÃO B)');
+      console.log('✅ Settings sincronizados com Supabase via UPSERT');
       return { success: true, message: 'Configurações sincronizadas com sucesso!' };
     } catch (error) {
       console.error('❌ Erro ao sincronizar settings:', error);
