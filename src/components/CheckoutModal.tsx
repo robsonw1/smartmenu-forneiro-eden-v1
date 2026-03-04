@@ -1000,21 +1000,8 @@ export function CheckoutModal() {
 
   const handleSubmitOrder = async () => {
     // � PROTEÇÃO CRÍTICA #1: Se loja está fechada, BLOQUEIA IMEDIATAMENTE - sem processamento
-    if (!settings.isManuallyOpen) {
-      console.error('🚫 [CHECKOUT] BLOQUEIO CRÍTICO: isManuallyOpen = false');
-      toast.error('🔒 ESTABELECIMENTO FECHADO MANUALMENTE! Não é possível fazer pedidos.');
-      return; // PARA AQUI - não continua
-    }
-
-    // 🚫 PROTEÇÃO CRÍTICA #2: Recalcular se loja está aberta agora
-    const currentStoreOpen = isStoreOpen();
-    if (!currentStoreOpen) {
-      console.error('🚫 [CHECKOUT] BLOQUEIO CRÍTICO: storeOpen = false (fora do horário)');
-      toast.error('⏰ ESTABELECIMENTO FORA DO HORÁRIO! Não é possível fazer pedidos no momento.');
-      return; // PARA AQUI - não continua
-    }
-
-    console.log('✅ [CHECKOUT] Validações passaram - Processando pedido');
+    // All time-based restrictions removed
+    console.log('✅ [CHECKOUT] Processando pedido');
     if (!validateStep('payment')) return;
     
     setIsProcessing(true);
