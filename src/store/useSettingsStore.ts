@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 export interface DaySchedule {
   isOpen: boolean;
   openTime: string;
@@ -48,7 +48,8 @@ interface StoreSettings {
 interface SettingsStore {
   settings: StoreSettings;
   updateSettings: (settings: Partial<StoreSettings>) => Promise<void>;
-  loadSettingsLocally: (settings: Partial<StoreSettings>) => void; // ✅ SÓ carrega em memória, sem resalvar
+  loadSettingsFromSupabase: () => Promise<void>;
+  loadSettingsLocally: (settings: Partial<StoreSettings>) => void;
   setSetting: (key: keyof StoreSettings, value: any) => void;
   updateDaySchedule: (day: keyof WeekSchedule, schedule: Partial<DaySchedule>) => void;
   toggleManualOpen: () => void;
@@ -99,10 +100,83 @@ const defaultSettings: StoreSettings = {
 
 const dayNames: (keyof WeekSchedule)[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-export const useSettingsStore = create<SettingsStore>()(
-  persist(
-    (set, get) => ({
+export const useSettingsStore = create<SettingsStore>((set, get) => ({
   settings: defaultSettings,
+
+  loadSettingsFromSupabase: async () => {
+    try {
+      console.log('📥 [LOAD-SUPABASE] Carregando TODAS as settings do Supabase...');
+      
+      const { data, error } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('id', 'store-settings')
+        .single();
+
+      if (error) {
+        console.error('❌ [LOAD-SUPABASE] Erro ao carregar settings:', error);
+        return;
+      }
+
+      if (data) {
+        const settingsData = data as any;
+        const valueJson = settingsData.value || {};
+        
+        // ✅ CARREGAR SCHEDULE COM DEFAULTS SE NÃO TIVER
+        const loadedSchedule = valueJson.schedule || {
+          monday: { isOpen: false, openTime: '18:00', closeTime: '23:00' },
+          tuesday: { isOpen: true, openTime: '18:00', closeTime: '23:00' },
+          wednesday: { isOpen: true, openTime: '18:00', closeTime: '23:00' },
+          thursday: { isOpen: true, openTime: '18:00', closeTime: '23:00' },
+          friday: { isOpen: true, openTime: '18:00', closeTime: '23:00' },
+          saturday: { isOpen: true, openTime: '17:00', closeTime: '00:00' },
+          sunday: { isOpen: true, openTime: '17:00', closeTime: '23:00' },
+        };
+
+        console.log('✅ [LOAD-SUPABASE] Settings carregadas do Supabase:', {
+          name: valueJson.name,
+          enableScheduling: settingsData.enable_scheduling,
+          schedule: loadedSchedule,
+        });
+
+        // ✅ MAPEAR TODOS OS CAMPOS DO BANCO PARA O ESTADO
+        set({
+          settings: {
+            name: valueJson.name || 'Forneiro Éden',
+            phone: valueJson.phone || '(11) 99999-9999',
+            address: valueJson.address || 'Rua das Pizzas, 123 - Centro',
+            slogan: valueJson.slogan || 'A Pizza mais recheada da cidade 🇮🇹',
+            schedule: loadedSchedule,
+            isManuallyOpen: valueJson.isManuallyOpen ?? true,
+            deliveryTimeMin: valueJson.deliveryTimeMin ?? 60,
+            deliveryTimeMax: valueJson.deliveryTimeMax ?? 70,
+            pickupTimeMin: valueJson.pickupTimeMin ?? 40,
+            pickupTimeMax: valueJson.pickupTimeMax ?? 50,
+            adminPassword: valueJson.adminPassword || 'admin123',
+            printnode_printer_id: valueJson.printnode_printer_id,
+            print_mode: valueJson.print_mode,
+            auto_print_pix: valueJson.auto_print_pix ?? false,
+            auto_print_card: valueJson.auto_print_card ?? false,
+            auto_print_cash: valueJson.auto_print_cash ?? false,
+            orderAlertEnabled: valueJson.orderAlertEnabled ?? true,
+            sendOrderSummaryToWhatsApp: valueJson.sendOrderSummaryToWhatsApp ?? false,
+            enableScheduling: settingsData.enable_scheduling ?? false,
+            minScheduleMinutes: settingsData.min_schedule_minutes ?? 30,
+            maxScheduleDays: settingsData.max_schedule_days ?? 7,
+            allowSchedulingOnClosedDays: settingsData.allow_scheduling_on_closed_days ?? false,
+            allowSchedulingOutsideBusinessHours: settingsData.allow_scheduling_outside_business_hours ?? false,
+            respectBusinessHoursForScheduling: settingsData.respect_business_hours_for_scheduling ?? true,
+            allowSameDaySchedulingOutsideHours: settingsData.allow_same_day_scheduling_outside_hours ?? false,
+            timezone: valueJson.timezone || 'America/Sao_Paulo',
+          }
+        });
+
+        console.log('✅ [LOAD-SUPABASE] Store atualizado com SUCESSO - SEMPRE DO SUPABASE, NUNCA DO LOCALSTORAGE');
+      }
+    } catch (error) {
+      console.error('❌ [LOAD-SUPABASE] Exceção ao carregar settings:', error);
+    }
+  },
 
   updateSettings: async (newSettings) => {
     set((state) => ({
@@ -380,9 +454,4 @@ export const useSettingsStore = create<SettingsStore>()(
       return { success: false, message: 'Erro ao sincronizar configurações' };
     }
   },
-    }),
-    {
-      name: 'forneiro-eden-settings',
-    }
-  )
-);
+}));
