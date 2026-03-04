@@ -113,14 +113,37 @@ export const useSettingsStore = create<SettingsStore>()(
     try {
       const { settings: currentSettings } = get();
       
-      console.log('💾 [UPDATE-SETTINGS] Salvando schedule...');
+      console.log('💾 [UPDATE-SETTINGS] Salvando configurações no Supabase...');
 
-      // ✅ USAR UPDATE: Atualiza apenas campos necessários
-      const { data, error } = await supabase
+      // ✅ SEPARAR DADOS EM COLUNAS E JSON VALUE
+      const updateData: any = {
+        value: {
+          name: currentSettings.name,
+          phone: currentSettings.phone,
+          address: currentSettings.address,
+          slogan: currentSettings.slogan,
+          schedule: currentSettings.schedule,
+          isManuallyOpen: currentSettings.isManuallyOpen,
+          deliveryTimeMin: currentSettings.deliveryTimeMin,
+          deliveryTimeMax: currentSettings.deliveryTimeMax,
+          pickupTimeMin: currentSettings.pickupTimeMin,
+          pickupTimeMax: currentSettings.pickupTimeMax,
+          orderAlertEnabled: currentSettings.orderAlertEnabled,
+          sendOrderSummaryToWhatsApp: currentSettings.sendOrderSummaryToWhatsApp,
+        },
+        enable_scheduling: currentSettings.enableScheduling,
+        min_schedule_minutes: currentSettings.minScheduleMinutes,
+        max_schedule_days: currentSettings.maxScheduleDays,
+        allow_scheduling_on_closed_days: currentSettings.allowSchedulingOnClosedDays,
+        allow_scheduling_outside_business_hours: currentSettings.allowSchedulingOutsideBusinessHours,
+        respect_business_hours_for_scheduling: currentSettings.respectBusinessHoursForScheduling,
+        allow_same_day_scheduling_outside_hours: currentSettings.allowSameDaySchedulingOutsideHours,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
         .from('settings')
-        .update({
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', 'store-settings');
 
       if (error) {
@@ -128,7 +151,7 @@ export const useSettingsStore = create<SettingsStore>()(
         throw error;
       }
 
-      console.log('✅ [UPDATE-SETTINGS] Configurações salvas com UPSERT');
+      console.log('✅ [UPDATE-SETTINGS] Todas as configurações salvas com sucesso');
     } catch (error) {
       console.error('❌ [UPDATE-SETTINGS] Exceção ao atualizar settings:', error);
       throw error;
@@ -165,12 +188,27 @@ export const useSettingsStore = create<SettingsStore>()(
 
         console.log('💾 [UPDATE-DAY-SCHEDULE] Salvando schedule COMPLETO para dia:', day);
 
-        // ✅ USAR UPDATE: Atualiza apenas campos necessários
+        const updateData: any = {
+          value: {
+            name: currentSettings.name,
+            phone: currentSettings.phone,
+            address: currentSettings.address,
+            slogan: currentSettings.slogan,
+            schedule: currentSettings.schedule,
+            isManuallyOpen: currentSettings.isManuallyOpen,
+            deliveryTimeMin: currentSettings.deliveryTimeMin,
+            deliveryTimeMax: currentSettings.deliveryTimeMax,
+            pickupTimeMin: currentSettings.pickupTimeMin,
+            pickupTimeMax: currentSettings.pickupTimeMax,
+            orderAlertEnabled: currentSettings.orderAlertEnabled,
+            sendOrderSummaryToWhatsApp: currentSettings.sendOrderSummaryToWhatsApp,
+          },
+          updated_at: new Date().toISOString()
+        };
+
         const { error } = await supabase
           .from('settings')
-          .update({
-            updated_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', 'store-settings');
 
         if (error) {
@@ -300,12 +338,34 @@ export const useSettingsStore = create<SettingsStore>()(
     try {
       const { settings } = get();
 
-      // ✅ USAR UPDATE: Atualiza apenas campos necessários
+      const updateData: any = {
+        value: {
+          name: settings.name,
+          phone: settings.phone,
+          address: settings.address,
+          slogan: settings.slogan,
+          schedule: settings.schedule,
+          isManuallyOpen: settings.isManuallyOpen,
+          deliveryTimeMin: settings.deliveryTimeMin,
+          deliveryTimeMax: settings.deliveryTimeMax,
+          pickupTimeMin: settings.pickupTimeMin,
+          pickupTimeMax: settings.pickupTimeMax,
+          orderAlertEnabled: settings.orderAlertEnabled,
+          sendOrderSummaryToWhatsApp: settings.sendOrderSummaryToWhatsApp,
+        },
+        enable_scheduling: settings.enableScheduling,
+        min_schedule_minutes: settings.minScheduleMinutes,
+        max_schedule_days: settings.maxScheduleDays,
+        allow_scheduling_on_closed_days: settings.allowSchedulingOnClosedDays,
+        allow_scheduling_outside_business_hours: settings.allowSchedulingOutsideBusinessHours,
+        respect_business_hours_for_scheduling: settings.respectBusinessHoursForScheduling,
+        allow_same_day_scheduling_outside_hours: settings.allowSameDaySchedulingOutsideHours,
+        updated_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase
         .from('settings')
-        .update({
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', 'store-settings');
 
       if (error) {
@@ -313,7 +373,7 @@ export const useSettingsStore = create<SettingsStore>()(
         return { success: false, message: 'Erro ao sincronizar configurações' };
       }
 
-      console.log('✅ Settings sincronizados com Supabase via UPSERT');
+      console.log('✅ Settings sincronizados com Supabase com TODOS os dados');
       return { success: true, message: 'Configurações sincronizadas com sucesso!' };
     } catch (error) {
       console.error('❌ Erro ao sincronizar settings:', error);
