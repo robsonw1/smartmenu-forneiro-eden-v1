@@ -147,7 +147,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             address: valueJson.address || 'Rua das Pizzas, 123 - Centro',
             slogan: valueJson.slogan || 'A Pizza mais recheada da cidade 🇮🇹',
             schedule: loadedSchedule,
-            isManuallyOpen: valueJson.isManuallyOpen ?? true,
+            isManuallyOpen: settingsData.is_manually_open ?? valueJson.isManuallyOpen ?? true,
             deliveryTimeMin: valueJson.deliveryTimeMin ?? 60,
             deliveryTimeMax: valueJson.deliveryTimeMax ?? 70,
             pickupTimeMin: valueJson.pickupTimeMin ?? 40,
