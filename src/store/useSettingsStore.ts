@@ -48,6 +48,7 @@ interface StoreSettings {
 interface SettingsStore {
   settings: StoreSettings;
   updateSettings: (settings: Partial<StoreSettings>) => Promise<void>;
+  loadSettingsLocally: (settings: Partial<StoreSettings>) => void; // ✅ SÓ carrega em memória, sem resalvar
   setSetting: (key: keyof StoreSettings, value: any) => void;
   updateDaySchedule: (day: keyof WeekSchedule, schedule: Partial<DaySchedule>) => void;
   toggleManualOpen: () => void;
@@ -166,6 +167,13 @@ export const useSettingsStore = create<SettingsStore>()(
     set((state) => ({
       settings: { ...state.settings, [key]: value },
     })),
+
+  // ✅ NOVO: Carrega settings SÓ em memória, SEM resalvar no Supabase
+  loadSettingsLocally: (newSettings) => {
+    set((state) => ({
+      settings: { ...state.settings, ...newSettings },
+    }));
+  },
 
   updateDaySchedule: (day, schedule) => {
     set((state) => ({
