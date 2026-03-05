@@ -220,6 +220,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       };
 
       console.log('📤 [UPDATE-SETTINGS] Schedule no updateData:', updateData.value.schedule);
+      console.log('📤 [UPDATE-SETTINGS] JSON COMPLETO sendo enviado:', JSON.stringify(updateData, null, 2));
       console.log('📤 [UPDATE-SETTINGS] Enviando COMPLETO ao Supabase...');
 
       // 4️⃣ ENVIAR PARA SUPABASE
@@ -231,18 +232,41 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
       if (error) {
         console.error('❌ [UPDATE-SETTINGS] ERRO AO SALVAR:', error);
+        console.error('❌ [UPDATE-SETTINGS] Código de erro:', (error as any).code);
+        console.error('❌ [UPDATE-SETTINGS] Mensagem:', (error as any).message);
         throw error;
       }
 
       // 5️⃣ VERIFICAR QUE REALMENTE SALVOU
       if (data && data.length > 0) {
-        const savedData = data[0] as any; // ✅ Type cast para permitir acesso a propriedades dinâmicas
+        const savedData = data[0] as any;
         const savedValue = savedData.value || {};
         const savedSchedule = savedValue.schedule;
         
         console.log('✅ [UPDATE-SETTINGS] CONFIRMADO! Dados salvos no Supabase:');
-        console.log('✅ [UPDATE-SETTINGS] Schedule salvo:', savedSchedule);
+        console.log('✅ [UPDATE-SETTINGS] Schedule salvo (thursday):', savedSchedule?.thursday);
         console.log('✅ [UPDATE-SETTINGS] Updated At:', savedData.updated_at);
+        console.log('📊 [UPDATE-SETTINGS] COMPARAÇÃO:');
+        console.log('📊 Enviado thursday openTime:', updateData.value.schedule.thursday.openTime);
+        console.log('📊 Salvo thursday openTime:', savedSchedule?.thursday?.openTime);
+        console.log('📊 MATCH?', updateData.value.schedule.thursday.openTime === savedSchedule?.thursday?.openTime ? '✅ SIM' : '❌ NÃO');
+        
+        // ⚠️  SE NÃO MATCHOU, FAZER UM SELECT ADICIONAL PARA CONFIRMAR
+        if (updateData.value.schedule.thursday.openTime !== savedSchedule?.thursday?.openTime) {
+          console.warn('⚠️  [UPDATE-SETTINGS] DADOS RETORNADOS NÃO MATCHAM! Fazendo SELECT adicional...');
+          const { data: verifyData, error: verifyError } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('id', 'store-settings')
+            .single();
+          
+          if (!verifyError && verifyData) {
+            const verifyValue = (verifyData as any).value || {};
+            console.log('🔍 [UPDATE-SETTINGS] SELECT de verificação:');
+            console.log('🔍 Valor no banco (thursday openTime):', verifyValue.schedule?.thursday?.openTime);
+            console.log('🔍 CONTINUA NÃO MATCHANDO?', updateData.value.schedule.thursday.openTime !== verifyValue.schedule?.thursday?.openTime ? '❌ SIM - PROBLEMA NO BANCO!' : '✅ NÃO - PODE SER RESPOSTA ATRASADA');
+          }
+        }
       } else {
         console.warn('⚠️  [UPDATE-SETTINGS] Supabase retornou vazio - verificar se update funcionou');
       }
