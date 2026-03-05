@@ -147,7 +147,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             address: valueJson.address || 'Rua das Pizzas, 123 - Centro',
             slogan: valueJson.slogan || 'A Pizza mais recheada da cidade 🇮🇹',
             schedule: loadedSchedule,
-            isManuallyOpen: settingsData.is_manually_open ?? valueJson.isManuallyOpen ?? true,
+            isManuallyOpen: valueJson.isManuallyOpen ?? true,
             deliveryTimeMin: valueJson.deliveryTimeMin ?? 60,
             deliveryTimeMax: valueJson.deliveryTimeMax ?? 70,
             pickupTimeMin: valueJson.pickupTimeMin ?? 40,
@@ -225,6 +225,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         throw error;
       }
 
+      console.log('📤 ENVIANDO PARA SUPABASE:', JSON.stringify(updateData, null, 2));
       console.log('✅ [UPDATE-SETTINGS] Todas as configurações salvas com sucesso');
     } catch (error) {
       console.error('❌ [UPDATE-SETTINGS] Exceção ao atualizar settings:', error);
@@ -245,6 +246,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
 
   updateDaySchedule: (day, schedule) => {
+    // ✅ CORREÇÃO: updateDaySchedule() SÓ atualiza estado local, NÃO salva no Supabase
+    // O saveamento completo acontece em updateSettings() quando o admin clica "Salvar Alterações"
+    // Assim evitamos race condition onde updateDaySchedule() sobrescreve dados recentes
     set((state) => ({
       settings: {
         ...state.settings,
@@ -254,47 +258,6 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         },
       },
     }));
-    
-    // ✅ SINCRONIZAR para Supabase - SEM setTimeout (evitar race conditions)
-    (async () => {
-      try {
-        const { settings: currentSettings } = useSettingsStore.getState();
-
-        console.log('💾 [UPDATE-DAY-SCHEDULE] Salvando schedule COMPLETO para dia:', day);
-
-        const updateData: any = {
-          value: {
-            name: currentSettings.name,
-            phone: currentSettings.phone,
-            address: currentSettings.address,
-            slogan: currentSettings.slogan,
-            schedule: currentSettings.schedule,
-            isManuallyOpen: currentSettings.isManuallyOpen,
-            deliveryTimeMin: currentSettings.deliveryTimeMin,
-            deliveryTimeMax: currentSettings.deliveryTimeMax,
-            pickupTimeMin: currentSettings.pickupTimeMin,
-            pickupTimeMax: currentSettings.pickupTimeMax,
-            orderAlertEnabled: currentSettings.orderAlertEnabled,
-            sendOrderSummaryToWhatsApp: currentSettings.sendOrderSummaryToWhatsApp,
-          },
-          updated_at: new Date().toISOString()
-        };
-
-        const { error } = await supabase
-          .from('settings')
-          .update(updateData)
-          .eq('id', 'store-settings');
-
-        if (error) {
-          console.error('❌ [UPDATE-DAY-SCHEDULE] Erro ao salvar:', error);
-          throw error;
-        }
-
-        console.log('✅ [UPDATE-DAY-SCHEDULE] Schedule COMPLETO sincronizado no Supabase para', day);
-      } catch (error) {
-        console.error('❌ [UPDATE-DAY-SCHEDULE] Erro ao sincronizar schedule:', error);
-      }
-    })();
   },
 
   toggleManualOpen: () =>
