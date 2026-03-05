@@ -1434,7 +1434,7 @@ const AdminDashboard = () => {
                     <div className="space-y-3">
                       <p className="text-sm font-semibold text-muted-foreground">Horários por Dia da Semana</p>
                       {dayOrder.map((day) => {
-                        const schedule = settings.schedule[day];
+                        const schedule = settingsForm.schedule[day];
                         if (!schedule) return null;
                         return (
                           <div 
