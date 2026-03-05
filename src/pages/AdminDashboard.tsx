@@ -125,6 +125,7 @@ const AdminDashboard = () => {
   const changePassword = useSettingsStore((s) => s.changePassword);
   const updateDaySchedule = useSettingsStore((s) => s.updateDaySchedule);
   const isStoreOpen = useSettingsStore((s) => s.isStoreOpen);
+  const loadSettingsFromSupabase = useSettingsStore((s) => s.loadSettingsFromSupabase);
 
   // Neighborhoods store
   const neighborhoods = useNeighborhoodsStore((s) => s.neighborhoods);
@@ -575,12 +576,34 @@ const AdminDashboard = () => {
       console.log('💾 [ADMIN-SAVE] ════════════════════════════════════════');
       console.log('💾 [ADMIN-SAVE] INICIANDO SALVAMENTO DO ADMIN');
       console.log('💾 [ADMIN-SAVE] Schedule que será salvo:', finalSettingsToSave.schedule);
+      console.log('💾 [ADMIN-SAVE] thursday que será salvo:', finalSettingsToSave.schedule.thursday);
       console.log('💾 [ADMIN-SAVE] Enviando para updateSettings()...');
       
       // Atualizar com TODOS os settings (incluindo schedule VALIDADO)
       await updateSettings(finalSettingsToSave);
       
       console.log('✅ [ADMIN-SAVE] updateSettings() completou com sucesso!');
+      
+      // 🔍 STEP EXTRA: VERIFICAR QUE FOI REALMENTE SALVO no Supabase
+      console.log('🔍 [ADMIN-SAVE] Aguardando 1 segundo e recarregando do Supabase para VERIFICAÇÃO...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      await loadSettingsFromSupabase();
+      
+      // Comparar: o que foi enviado vs. o que está no estado agora
+      const currentState = useSettingsStore.getState();
+      const savedThursday = currentState.settings.schedule.thursday;
+      const sentThursday = finalSettingsToSave.schedule.thursday;
+      
+      console.log('📊 [ADMIN-SAVE] VERIFICATION RESULTADO:');
+      console.log('📊 Enviado thursday:', sentThursday);
+      console.log('📊 Agora no estado thursday:', savedThursday);
+      console.log('📊 MATCH?', JSON.stringify(sentThursday) === JSON.stringify(savedThursday) ? '✅ PERFEITO' : '❌ NÃO CORRESPONDENTE');
+      
+      if (JSON.stringify(sentThursday) !== JSON.stringify(savedThursday)) {
+        console.error('❌ [ADMIN-SAVE] ALERTA: Os dados salvos não correspondem aos enviados!');
+        toast.error('⚠️  Aviso: dados podem não ter sido salvos corretamente. Tente novamente.');
+      }
       
       // Force settings refresh em todos os contextos IMEDIATAMENTE
       localStorage.setItem('settings-updated', Date.now().toString());
