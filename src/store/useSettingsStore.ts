@@ -153,11 +153,12 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
             pickupTimeMin: valueJson.pickupTimeMin ?? 40,
             pickupTimeMax: valueJson.pickupTimeMax ?? 50,
             adminPassword: valueJson.adminPassword || 'admin123',
-            printnode_printer_id: valueJson.printnode_printer_id,
-            print_mode: valueJson.print_mode,
-            auto_print_pix: valueJson.auto_print_pix ?? false,
-            auto_print_card: valueJson.auto_print_card ?? false,
-            auto_print_cash: valueJson.auto_print_cash ?? false,
+            // 🖨️  PRINTNODE: Tentar carregar da coluna normalizada PRIMEIRO, depois do JSON como fallback
+            printnode_printer_id: settingsData.printnode_printer_id || valueJson.printnode_printer_id || null,
+            print_mode: settingsData.print_mode || valueJson.print_mode || 'auto',
+            auto_print_pix: settingsData.auto_print_pix ?? (valueJson.auto_print_pix ?? false),
+            auto_print_card: settingsData.auto_print_card ?? (valueJson.auto_print_card ?? false),
+            auto_print_cash: settingsData.auto_print_cash ?? (valueJson.auto_print_cash ?? false),
             orderAlertEnabled: valueJson.orderAlertEnabled ?? true,
             sendOrderSummaryToWhatsApp: valueJson.sendOrderSummaryToWhatsApp ?? false,
             enableScheduling: settingsData.enable_scheduling ?? false,
@@ -172,6 +173,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         });
 
         console.log('✅ [LOAD-SUPABASE] Store atualizado com SUCESSO');
+        console.log('🖨️  [LOAD-SUPABASE] PrintNode carregado: ID=', settingsData.printnode_printer_id, ', Mode=', settingsData.print_mode);
         console.log('📥 [LOAD-SUPABASE] ════════════════════════════════════════');
       }
     } catch (error) {
@@ -209,6 +211,13 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           orderAlertEnabled: currentSettings.orderAlertEnabled,
           sendOrderSummaryToWhatsApp: currentSettings.sendOrderSummaryToWhatsApp,
         },
+        // 🖨️  COLUNAS PRINTNODE - SALVAR TAMBÉM NAS COLUNAS NORMALIZADAS
+        printnode_printer_id: currentSettings.printnode_printer_id || null,
+        print_mode: currentSettings.print_mode || 'auto',
+        auto_print_pix: currentSettings.auto_print_pix ?? false,
+        auto_print_card: currentSettings.auto_print_card ?? false,
+        auto_print_cash: currentSettings.auto_print_cash ?? false,
+        // SCHEDULING
         enable_scheduling: currentSettings.enableScheduling,
         min_schedule_minutes: currentSettings.minScheduleMinutes,
         max_schedule_days: currentSettings.maxScheduleDays,
@@ -220,6 +229,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       };
 
       console.log('📤 [UPDATE-SETTINGS] Schedule no updateData:', updateData.value.schedule);
+      console.log('🖨️  [UPDATE-SETTINGS] PrintNode Printer ID:', updateData.printnode_printer_id);
+      console.log('🖨️  [UPDATE-SETTINGS] PrintNode Mode:', updateData.print_mode);
       console.log('📤 [UPDATE-SETTINGS] JSON COMPLETO sendo enviado:', JSON.stringify(updateData, null, 2));
       console.log('📤 [UPDATE-SETTINGS] Enviando COMPLETO ao Supabase...');
 
@@ -245,11 +256,20 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         
         console.log('✅ [UPDATE-SETTINGS] CONFIRMADO! Dados salvos no Supabase:');
         console.log('✅ [UPDATE-SETTINGS] Schedule salvo (thursday):', savedSchedule?.thursday);
+        console.log('🖨️  [UPDATE-SETTINGS] PrintNode salvo - ID:', savedData.printnode_printer_id, ', Mode:', savedData.print_mode);
         console.log('✅ [UPDATE-SETTINGS] Updated At:', savedData.updated_at);
-        console.log('📊 [UPDATE-SETTINGS] COMPARAÇÃO:');
+        console.log('📊 [UPDATE-SETTINGS] COMPARAÇÃO SCHEDULE:');
         console.log('📊 Enviado thursday openTime:', updateData.value.schedule.thursday.openTime);
         console.log('📊 Salvo thursday openTime:', savedSchedule?.thursday?.openTime);
         console.log('📊 MATCH?', updateData.value.schedule.thursday.openTime === savedSchedule?.thursday?.openTime ? '✅ SIM' : '❌ NÃO');
+        
+        // 🖨️  VERIFICAÇÃO PRINTNODE
+        if (updateData.printnode_printer_id) {
+          console.log('📊 [UPDATE-SETTINGS] COMPARAÇÃO PRINTNODE:');
+          console.log('📊 Enviado Printer ID:', updateData.printnode_printer_id);
+          console.log('📊 Salvo Printer ID:', savedData.printnode_printer_id);
+          console.log('📊 MATCH?', updateData.printnode_printer_id === savedData.printnode_printer_id ? '✅ SIM' : '❌ NÃO');
+        }
         
         // ⚠️  SE NÃO MATCHOU, FAZER UM SELECT ADICIONAL PARA CONFIRMAR
         if (updateData.value.schedule.thursday.openTime !== savedSchedule?.thursday?.openTime) {
