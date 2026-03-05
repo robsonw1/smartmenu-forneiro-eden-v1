@@ -596,7 +596,7 @@ const AdminDashboard = () => {
   };
 
   const handleDayScheduleChange = (day: string, updates: any) => {
-    // ✅ Atualizar settingsForm localmente PRIMEIRO (antes de enviar para Zustand)
+    // ✅ Atualizar settingsForm localmente PRIMEIRO
     setSettingsForm(prevForm => ({
       ...prevForm,
       schedule: {
@@ -605,9 +605,6 @@ const AdminDashboard = () => {
       },
     }));
     setHasUnsavedChanges(true);
-    
-    // Depois sincronizar para Zustand (que vai para Supabase)
-    updateDaySchedule(day as any, updates);
     toast.info(`✏️ Alteração em ${dayLabels[day]} - Clique em "Salvar Alterações" para confirmar`);
   };
 
