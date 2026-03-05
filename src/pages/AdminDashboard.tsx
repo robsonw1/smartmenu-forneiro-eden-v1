@@ -572,24 +572,26 @@ const AdminDashboard = () => {
         schedule: validatedSchedule,
       };
       
-      console.log('💾 [ADMIN-SAVE] Salvando configurações com schedule VALIDADO:', {
-        hasUnsavedChanges: hasUnsavedChanges,
-        phone: finalSettingsToSave.phone,
-        scheduleQueSeraEnviado: finalSettingsToSave.schedule,
-      });
+      console.log('💾 [ADMIN-SAVE] ════════════════════════════════════════');
+      console.log('💾 [ADMIN-SAVE] INICIANDO SALVAMENTO DO ADMIN');
+      console.log('💾 [ADMIN-SAVE] Schedule que será salvo:', finalSettingsToSave.schedule);
+      console.log('💾 [ADMIN-SAVE] Enviando para updateSettings()...');
       
       // Atualizar com TODOS os settings (incluindo schedule VALIDADO)
       await updateSettings(finalSettingsToSave);
       
-      // Force settings refresh em todos os contextos
+      console.log('✅ [ADMIN-SAVE] updateSettings() completou com sucesso!');
+      
+      // Force settings refresh em todos os contextos IMEDIATAMENTE
       localStorage.setItem('settings-updated', Date.now().toString());
       
-      // Sincronizar local com Zustand APÓS salvar com sucesso
-      setTimeout(() => {
-        setHasUnsavedChanges(false);
-        console.log('✅ [ADMIN-SAVE] Configurações salvas e sincronizadas com sucesso!');
-        toast.success('✅ Configurações salvas e sincronizadas em tempo real!');
-      }, 500);
+      // MARCAR COMO NÃO SALVO IMEDIATAMENTE (não usar setTimeout)
+      setHasUnsavedChanges(false);
+      
+      console.log('✅ [ADMIN-SAVE] Estado marcado como salvo');
+      console.log('✅ [ADMIN-SAVE] ════════════════════════════════════════');
+      
+      toast.success('✅ Configurações salvas e sincronizadas em tempo real!');
     } catch (error) {
       console.error('❌ [ADMIN-SAVE] Erro ao salvar:', error);
       toast.error('Erro ao salvar configurações. Tente novamente.');
