@@ -183,10 +183,16 @@ const AdminDashboard = () => {
   // ✅ NOVA SOLUÇÃO: Sincronizar settingsForm APENAS no mount
   // NÃO sincroniza enquanto admin está editando (mesmo que realtime traga atualizações)
   // Isso garante que edições do admin não sejam perdidas
+  // ⚡ CRÍTICO: Sincronizar settingsForm QUANDO `settings` do Zustand mudar
+  // Isso garante que quando `loadSettingsFromSupabase()` carrega dados, o formulário mostra
+  // Se o admin está editando (hasUnsavedChanges=true), NÃO sobrescreve as edições
   useEffect(() => {
-    console.log('🔄 [ADMIN-INIT] Inicializando settingsForm com dados do Zustand (MOUNT ONLY)');
-    setSettingsForm(settings);
-  }, []); // Dependency array vazio = executa APENAS no mount
+    if (!hasUnsavedChanges) {
+      console.log('🔄 [ADMIN-SYNC] Settings do Zustand mudou, sincronizando settingsForm');
+      setSettingsForm(settings);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]); // Apenas settings, hasUnsavedChanges é verificado dentro do if
 
   // ✅ Função auxiliar para recarregar manualmente (botão "Cancelar")
   const handleReloadSettings = () => {
