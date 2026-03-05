@@ -105,6 +105,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   loadSettingsFromSupabase: async () => {
     try {
+      console.log('📥 [LOAD-SUPABASE] ════════════════════════════════════════');
       console.log('📥 [LOAD-SUPABASE] Carregando TODAS as settings do Supabase...');
       
       const { data, error } = await supabase
@@ -122,6 +123,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         const settingsData = data as any;
         const valueJson = settingsData.value || {};
         
+        console.log('📥 [LOAD-SUPABASE] Dados brutos do banco:');
+        console.log('📥 [LOAD-SUPABASE] value.schedule:', valueJson.schedule);
+        
         // ✅ CARREGAR SCHEDULE COM DEFAULTS SE NÃO TIVER
         const loadedSchedule = valueJson.schedule || {
           monday: { isOpen: false, openTime: '18:00', closeTime: '23:00' },
@@ -133,11 +137,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           sunday: { isOpen: true, openTime: '17:00', closeTime: '23:00' },
         };
 
-        console.log('✅ [LOAD-SUPABASE] Settings carregadas do Supabase:', {
-          name: valueJson.name,
-          enableScheduling: settingsData.enable_scheduling,
-          schedule: loadedSchedule,
-        });
+        console.log('📥 [LOAD-SUPABASE] Schedule que será usado:', loadedSchedule);
 
         // ✅ MAPEAR TODOS OS CAMPOS DO BANCO PARA O ESTADO
         set({
@@ -171,7 +171,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           }
         });
 
-        console.log('✅ [LOAD-SUPABASE] Store atualizado com SUCESSO - SEMPRE DO SUPABASE, NUNCA DO LOCALSTORAGE');
+        console.log('✅ [LOAD-SUPABASE] Store atualizado com SUCESSO');
+        console.log('📥 [LOAD-SUPABASE] ════════════════════════════════════════');
       }
     } catch (error) {
       console.error('❌ [LOAD-SUPABASE] Exceção ao carregar settings:', error);
@@ -179,24 +180,27 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   },
 
   updateSettings: async (newSettings) => {
-    set((state) => ({
-      settings: { ...state.settings, ...newSettings },
-    }));
-    
-    // Salvar no Supabase
     try {
+      // 1️⃣ ATUALIZAR ESTADO LOCAL PRIMEIRO
+      set((state) => ({
+        settings: { ...state.settings, ...newSettings },
+      }));
+      
+      // 2️⃣ PEGAR ESTADO ATUALIZADO
       const { settings: currentSettings } = get();
       
-      console.log('💾 [UPDATE-SETTINGS] Salvando configurações no Supabase...');
+      console.log('💾 [UPDATE-SETTINGS] ════════════════════════════════════════');
+      console.log('💾 [UPDATE-SETTINGS] INICIANDO SALVAMENTO NO SUPABASE');
+      console.log('💾 [UPDATE-SETTINGS] Schedule que será salvo:', currentSettings.schedule);
 
-      // ✅ SEPARAR DADOS EM COLUNAS E JSON VALUE
+      // 3️⃣ PREPARAR DADOS - SCHEDULE DEVE ESTAR 100% COMPLETO
       const updateData: any = {
         value: {
           name: currentSettings.name,
           phone: currentSettings.phone,
           address: currentSettings.address,
           slogan: currentSettings.slogan,
-          schedule: currentSettings.schedule,
+          schedule: currentSettings.schedule, // ✅ SCHEDULE COMPLETO
           isManuallyOpen: currentSettings.isManuallyOpen,
           deliveryTimeMin: currentSettings.deliveryTimeMin,
           deliveryTimeMax: currentSettings.deliveryTimeMax,
@@ -215,20 +219,37 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
+      console.log('📤 [UPDATE-SETTINGS] Schedule no updateData:', updateData.value.schedule);
+      console.log('📤 [UPDATE-SETTINGS] Enviando COMPLETO ao Supabase...');
+
+      // 4️⃣ ENVIAR PARA SUPABASE
+      const { data, error } = await supabase
         .from('settings')
         .update(updateData)
-        .eq('id', 'store-settings');
+        .eq('id', 'store-settings')
+        .select(); // ✅ RETORNAR DADOS SALVOS PARA CONFIRMAR
 
       if (error) {
-        console.error('❌ [UPDATE-SETTINGS] ERRO ao salvar no Supabase:', error);
+        console.error('❌ [UPDATE-SETTINGS] ERRO AO SALVAR:', error);
         throw error;
       }
 
-      console.log('📤 ENVIANDO PARA SUPABASE:', JSON.stringify(updateData, null, 2));
-      console.log('✅ [UPDATE-SETTINGS] Todas as configurações salvas com sucesso');
+      // 5️⃣ VERIFICAR QUE REALMENTE SALVOU
+      if (data && data.length > 0) {
+        const savedData = data[0] as any; // ✅ Type cast para permitir acesso a propriedades dinâmicas
+        const savedValue = savedData.value || {};
+        const savedSchedule = savedValue.schedule;
+        
+        console.log('✅ [UPDATE-SETTINGS] CONFIRMADO! Dados salvos no Supabase:');
+        console.log('✅ [UPDATE-SETTINGS] Schedule salvo:', savedSchedule);
+        console.log('✅ [UPDATE-SETTINGS] Updated At:', savedData.updated_at);
+      } else {
+        console.warn('⚠️  [UPDATE-SETTINGS] Supabase retornou vazio - verificar se update funcionou');
+      }
+
+      console.log('💾 [UPDATE-SETTINGS] ════════════════════════════════════════');
     } catch (error) {
-      console.error('❌ [UPDATE-SETTINGS] Exceção ao atualizar settings:', error);
+      console.error('❌ [UPDATE-SETTINGS] EXCEÇÃO FATAL:', error);
       throw error;
     }
   },
