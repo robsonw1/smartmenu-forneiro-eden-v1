@@ -202,6 +202,23 @@ const AdminDashboard = () => {
     setHasUnsavedChanges(true);
   };
 
+  // 📲 Função para notificar OUTRAS abas do mesmo navegador que houve alteração
+  const notifyOtherTabs = (data: any) => {
+    try {
+      const channel = new BroadcastChannel('admin-settings');
+      channel.postMessage({
+        type: 'SETTINGS_UPDATED',
+        data: data,
+        timestamp: Date.now(),
+        source: 'admin-' + Math.random().toString(36).substr(2, 9),
+      });
+      channel.close();
+      console.log('📲 [NOTIFY-TABS] Enviado broadcast para outras abas');
+    } catch (error) {
+      console.warn('⚠️  BroadcastChannel não disponível neste navegador:', error);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('admin-token');
     if (!token) {
@@ -238,6 +255,123 @@ const AdminDashboard = () => {
       subscription.unsubscribe();
     };
   }, [syncOrdersFromSupabase]);
+
+  // ⚡ NOVA: Sincronizar settings em tempo real quando outro gerente faz mudanças
+  // Sem interromper edições do gerente atual
+  useEffect(() => {
+    const token = localStorage.getItem('admin-token');
+    if (!token) return;
+
+    console.log('📡 [ADMIN-SUBSCRIBE] Iniciando subscription para mudanças em settings...');
+
+    const settingsChannel = supabase
+      .channel('public:settings')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'settings', filter: 'id=eq.store-settings' },
+        async (payload) => {
+          console.log('🔔 [ADMIN-SUBSCRIBE] Mudan ça em settings detectada! Outro gerente salvou dados.');
+          console.log('🔔 [ADMIN-SUBSCRIBE] Payload:', payload);
+          
+          // ⚠️  SÓ sincronizar se o gerente this NÃO tem edições não salvas
+          if (hasUnsavedChanges) {
+            console.warn('⚠️  [ADMIN-SUBSCRIBE] Gerente tem edições em progresso - NÃO sobrescrever');
+            toast.info('💡 Outro gerente fez mudanças. Salve suas edições ou Cancele para ver as mudanças.');
+            return;
+          }
+
+          // Recarregar settings do Supabase
+          console.log('🔄 [ADMIN-SUBSCRIBE] Recarregando settings do Supabase...');
+          await loadSettingsFromSupabase();
+
+          // Sincronizar settingsForm COM os dados carregados
+          const latestSettings = useSettingsStore.getState();
+          setSettingsForm(latestSettings.settings);
+          
+          console.log('✅ [ADMIN-SUBSCRIBE] settingsForm sincronizado com mudanças do outro gerente');
+          console.log('✅ [ADMIN-SUBSCRIBE] Nova schedule (thursday):', latestSettings.settings.schedule.thursday);
+          
+          // Toast silencioso (apenas notifica, não interrompe)
+          toast.success('📡 Configurações sincronizadas de outro gerente.', { duration: 2000 });
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 [ADMIN-SUBSCRIBE] Subscription status:', status);
+      });
+
+    return () => {
+      settingsChannel.unsubscribe();
+    };
+  }, [hasUnsavedChanges, loadSettingsFromSupabase]);
+
+  // ⚡ NOVA: Sincronizar entre múltiplas abas do MESMO navegador
+  // Quando uma aba salva (escreve em localStorage 'admin-settings-updated'),
+  // outras abas detectam via evento 'storage' e sincronizam
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'admin-settings-updated') {
+        console.log('📲 [MULTI-TAB-SYNC] Outra aba salvou configurações!');
+        
+        // Só sincronizar se NÃO tem edições em progresso
+        if (hasUnsavedChanges) {
+          console.warn('⚠️  [MULTI-TAB-SYNC] Aba atual tem edições em progresso - NÃO sobrescrever');
+          return;
+        }
+
+        console.log('🔄 [MULTI-TAB-SYNC] Recarregando settings...');
+        // Recarregar do Zustand (que foi atualizado via realtime subscription)
+        const currentState = useSettingsStore.getState();
+        setSettingsForm(currentState.settings);
+        
+        console.log('✅ [MULTI-TAB-SYNC] settingsForm sincronizado entre abas');
+      }
+    };
+
+    // Escutar eventos de storage de outras abas
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [hasUnsavedChanges]);
+
+  // ⚡ NOVA: Sincronizar entre múltiplas abas do MESMO navegador
+  // Usar um evento customizado para sincronizar DENTRO da mesma aba (broadcast channel)
+  // Isso funciona para múltiplas abas mesmo que localStorage não capture tudo
+  useEffect(() => {
+    try {
+      // BroadcastChannel é mais moderno e confiável para comunicação entre abas
+      const channel = new BroadcastChannel('admin-settings');
+      
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'SETTINGS_UPDATED') {
+          console.log('📲 [BROADCAST-SYNC] Outra aba enviou atualização via BroadcastChannel');
+          console.log('📲 [BROADCAST-SYNC] Dados recebidos:', event.data);
+          
+          // Só sincronizar se NÃO tem edições em progresso
+          if (hasUnsavedChanges) {
+            console.warn('⚠️  [BROADCAST-SYNC] Edições em progresso - NÃO sobrescrever');
+            return;
+          }
+
+          console.log('🔄 [BROADCAST-SYNC] Recarregando settings...');
+          const currentState = useSettingsStore.getState();
+          setSettingsForm(currentState.settings);
+          
+          console.log('✅ [BROADCAST-SYNC] settingsForm sincronizado entre abas');
+        }
+      };
+
+      channel.addEventListener('message', handleMessage);
+      
+      return () => {
+        channel.removeEventListener('message', handleMessage);
+        channel.close();
+      };
+    } catch (error) {
+      console.warn('⚠️  BroadcastChannel não disponível neste navegador');
+    }
+  }, [hasUnsavedChanges]);
 
   const handleLogout = () => {
     localStorage.removeItem('admin-token');
@@ -590,6 +724,12 @@ const AdminDashboard = () => {
       
       await loadSettingsFromSupabase();
       
+      // ⚡ CRÍTICO: Sincronizar settingsForm com os dados que acabaram de ser carregados
+      // Assim o formulário mostra os dados salvos, não os antigos
+      const reloadedState = useSettingsStore.getState();
+      setSettingsForm(reloadedState.settings);
+      console.log('✅ [ADMIN-SAVE] settingsForm sincronizado com dados carregados do Supabase');
+      
       // Comparar: o que foi enviado vs. o que está no estado agora
       const currentState = useSettingsStore.getState();
       const savedThursday = currentState.settings.schedule.thursday;
@@ -606,12 +746,16 @@ const AdminDashboard = () => {
       }
       
       // Force settings refresh em todos os contextos IMEDIATAMENTE
-      localStorage.setItem('settings-updated', Date.now().toString());
+      localStorage.setItem('admin-settings-updated', Date.now().toString());
+      
+      // 📲 Notificar OUTRAS abas do mesmo navegador via BroadcastChannel
+      notifyOtherTabs(finalSettingsToSave);
       
       // MARCAR COMO NÃO SALVO IMEDIATAMENTE (não usar setTimeout)
       setHasUnsavedChanges(false);
       
       console.log('✅ [ADMIN-SAVE] Estado marcado como salvo');
+      console.log('✅ [ADMIN-SAVE] Outras abas notificadas');
       console.log('✅ [ADMIN-SAVE] ════════════════════════════════════════');
       
       toast.success('✅ Configurações salvas e sincronizadas em tempo real!');
