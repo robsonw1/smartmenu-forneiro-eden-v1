@@ -1,4 +1,4 @@
-import { ShoppingCart, Menu, X, Sun, Moon, Truck, Store } from 'lucide-react';
+import { ShoppingCart, Menu, X, Sun, Moon, Truck, Store, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCartStore, useUIStore } from '@/store/useStore';
@@ -89,14 +89,16 @@ export function Header({ onLoginClick }: HeaderProps) {
             {currentCustomer ? (
               <CustomerProfileDropdown />
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLoginClick}
-                className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <span className="text-xs">Entrar</span>
-              </Button>
+              <Link to="/login">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span className="text-xs">Entrar</span>
+                </Button>
+              </Link>
             )}
 
             <Button
@@ -179,16 +181,16 @@ export function Header({ onLoginClick }: HeaderProps) {
                   </Badge>
                 </div>
                 {!currentCustomer && (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-secondary rounded-lg transition-colors"
-                    onClick={() => {
-                      onLoginClick?.();
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    Entrar
-                  </Button>
+                  <Link to="/login">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-secondary rounded-lg transition-colors gap-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <LogIn className="w-4 h-4" />
+                      Entrar
+                    </Button>
+                  </Link>
                 )}
               </div>
             </motion.nav>
