@@ -872,7 +872,7 @@ const AdminDashboard = () => {
                   alt="Forneiro Éden" 
                   className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover border-2 border-primary"
                 />
-                <span className="font-display font-bold text-lg">Admin</span>
+                <span className="font-heading font-bold text-lg">Admin</span>
               </div>
             </div>
 
@@ -901,7 +901,7 @@ const AdminDashboard = () => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <h1 className="font-display text-2xl md:text-3xl font-bold mb-8">
+        <h1 className="font-heading text-2xl md:text-3xl font-bold mb-8">
           Painel Administrativo
         </h1>
 
