@@ -15,11 +15,12 @@ import {
 import { Bell, Plus, Trash2, QrCode, CheckCircle, XCircle, Loader, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWhatsAppInstanceSync } from '@/hooks/use-whatsapp-instance-sync';
+import { WhatsAppStatusTemplates } from '@/components/admin/WhatsAppStatusTemplates';
 
 // ✅ Templates padrão em inglês (CORRETO)
 const DEFAULT_WHATSAPP_MESSAGES = {
   pending: '📋 Oi {nome}! Recebemos seu pedido #{pedido}. Você receberá uma confirmação em breve!',
-  confirmed: '🍕 Oi {nome}! Seu pedido #{pedido} foi confirmado! ⏱️ ~Entrega 60–70min ~Retirada 40–50min',
+  confirmed: '🍕 Oi {nome}! Seu pedido #{pedido} foi confirmado! ⏱️ Saindo do forno em ~25min',
   preparing: '👨‍🍳 Seu pedido #{pedido} está sendo preparado com capricho!',
   delivering: '🚗 Seu pedido #{pedido} está a caminho! 📍 Chega em ~15min',
   delivered: '✅ Pedido #{pedido} entregue! Valeu pela compra 🙏',
@@ -562,6 +563,18 @@ export const NotificationsTab = () => {
           ))}
         </div>
       )}
+
+      {/* Separador */}
+      <div className="my-8 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-border"></div>
+          <p className="text-sm font-semibold text-muted-foreground">Configurações Avançadas</p>
+          <div className="flex-1 h-px bg-border"></div>
+        </div>
+      </div>
+
+      {/* Configurar Templates */}
+      <WhatsAppStatusTemplates />
     </div>
   );
 };
