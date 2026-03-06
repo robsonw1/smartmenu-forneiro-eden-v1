@@ -119,7 +119,11 @@ const Login = () => {
 
   const handleGoogleError = () => {
     console.error('❌ Erro no Google Sign-In');
-    toast.error('❌ Erro ao fazer login com Google');
+    console.log('💡 Dicas:');
+    console.log('   - Verifique se está usando uma conta Google válida');
+    console.log('   - Verifique a conexão com internet');
+    console.log('   - Limpe o cache e tente novamente');
+    toast.error('❌ Erro ao fazer login com Google. Tente novamente.');
   };
 
   // Mostra spinner enquanto verifica se já há sessão ativa
