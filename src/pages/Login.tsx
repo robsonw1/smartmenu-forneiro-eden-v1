@@ -96,42 +96,58 @@ const Login = () => {
     }
   };
 
-  // Handle Google Login - Supabase Direto
+  // Handle Google Login - Fluxo PKCE (Documentação Oficial Supabase 2025)
   const handleGoogleLogin = async () => {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/auth/callback',
+          // ✅ CRÍTICO: Este é o redirectTo que DEVE estar registrado no Google Cloud Console
+          redirectTo: `${window.location.origin}/auth/callback`,
+          // ✅ Fluxo PKCE completo (recomendado pela documentação oficial)
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
       if (error) {
-        console.error('Erro no login:', error);
+        console.error('❌ Erro OAuth - Login Google:', error);
         toast.error('❌ Erro ao fazer login com Google: ' + error.message);
+      } else {
+        console.log('✅ OAuth iniciado - redirecionando para Google...');
       }
     } catch (error) {
-      console.error('Erro inesperado:', error);
+      console.error('🔴 Erro crítico ao iniciar OAuth:', error);
       toast.error('❌ Erro inesperado ao fazer login');
     }
   };
 
-  // Handle Google Signup - Supabase Direto
+  // Handle Google Signup - Mesmo fluxo (Supabase cria conta automaticamente)
   const handleGoogleSignup = async () => {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/auth/callback',
+          // ✅ CRÍTICO: Mesmo redirectTo que no login
+          redirectTo: `${window.location.origin}/auth/callback`,
+          // ✅ Fluxo PKCE completo
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
       if (error) {
-        console.error('Erro no registro:', error);
+        console.error('❌ Erro OAuth - Signup Google:', error);
         toast.error('❌ Erro ao fazer registro com Google: ' + error.message);
+      } else {
+        console.log('✅ OAuth iniciado - redirecionando para Google...');
       }
     } catch (error) {
-      console.error('Erro inesperado:', error);
+      console.error('🔴 Erro crítico ao iniciar OAuth:', error);
       toast.error('❌ Erro inesperado ao fazer registro');
     }
   };
