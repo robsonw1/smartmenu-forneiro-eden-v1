@@ -322,13 +322,16 @@ export const NotificationsTab = () => {
       }
 
       // Chamar edge function para deletar da Evolution API e do Supabase
-      const { data, error } = await (supabase as any).functions.invoke('delete-whatsapp-instance', {
-        body: {
-          instance_id: instance.id,
-          evolution_instance_name: instance.evolution_instance_name,
-          tenant_id: currentTenantId,
-        },
-      });
+      const { data, error } = await supabase.functions.invoke(
+        'delete-whatsapp-instance',
+        {
+          body: {
+            instance_id: instance.id,
+            evolution_instance_name: instance.evolution_instance_name,
+            tenant_id: currentTenantId,
+          },
+        }
+      );
 
       if (error) {
         console.error('❌ Erro ao deletar instância:', error);
