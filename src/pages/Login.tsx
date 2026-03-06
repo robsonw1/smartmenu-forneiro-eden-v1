@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { signUpWithEmail, signInWithEmail } from '@/lib/auth-service';
 import { useLoyaltyStore } from '@/store/useLoyaltyStore';
 
@@ -96,16 +96,19 @@ const Login = () => {
     }
   };
 
-  // Handle Google Login
+  // Handle Google Login - Supabase Direto
   const handleGoogleLogin = async () => {
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + '/auth/callback',
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/auth/callback',
+        },
       });
 
-      if (result.error) {
-        console.error('Erro no login:', result.error);
-        toast.error('❌ Erro ao fazer login com Google: ' + result.error.message);
+      if (error) {
+        console.error('Erro no login:', error);
+        toast.error('❌ Erro ao fazer login com Google: ' + error.message);
       }
     } catch (error) {
       console.error('Erro inesperado:', error);
@@ -113,16 +116,19 @@ const Login = () => {
     }
   };
 
-  // Handle Google Signup
+  // Handle Google Signup - Supabase Direto
   const handleGoogleSignup = async () => {
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin + '/auth/callback',
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/auth/callback',
+        },
       });
 
-      if (result.error) {
-        console.error('Erro no registro:', result.error);
-        toast.error('❌ Erro ao fazer registro com Google: ' + result.error.message);
+      if (error) {
+        console.error('Erro no registro:', error);
+        toast.error('❌ Erro ao fazer registro com Google: ' + error.message);
       }
     } catch (error) {
       console.error('Erro inesperado:', error);
