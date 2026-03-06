@@ -8,6 +8,7 @@ import { Footer } from '@/components/Footer';
 import { CustomerLoginModal } from '@/components/CustomerLoginModal';
 import { useLoyaltyStore } from '@/store/useLoyaltyStore';
 import { useLoyaltyRealtimeSync } from '@/hooks/use-loyalty-realtime-sync';
+import { useGoogleAuthSync } from '@/hooks/use-google-auth-sync';
 import { useState, useEffect } from 'react';
 
 const Index = () => {
@@ -17,6 +18,9 @@ const Index = () => {
 
   // Sincronizar dados de loyalty em tempo real
   useLoyaltyRealtimeSync();
+
+  // Sincronizar autenticação Google com Loyalty Store
+  useGoogleAuthSync();
 
   // Restaurar login lembrado ao inicializar
   useEffect(() => {
