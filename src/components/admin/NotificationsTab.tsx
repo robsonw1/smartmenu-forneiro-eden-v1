@@ -19,7 +19,7 @@ import { useWhatsAppInstanceSync } from '@/hooks/use-whatsapp-instance-sync';
 // ✅ Templates padrão em inglês (CORRETO)
 const DEFAULT_WHATSAPP_MESSAGES = {
   pending: '📋 Oi {nome}! Recebemos seu pedido #{pedido}. Você receberá uma confirmação em breve!',
-  confirmed: '🍕 Oi {nome}! Seu pedido #{pedido} foi confirmado! ⏱️ Saindo do forno em ~25min',
+  confirmed: '🍕 Oi {nome}! Seu pedido #{pedido} foi confirmado! ⏱️ ~Entrega 60–70min ~Retirada 40–50min',
   preparing: '👨‍🍳 Seu pedido #{pedido} está sendo preparado com capricho!',
   delivering: '🚗 Seu pedido #{pedido} está a caminho! 📍 Chega em ~15min',
   delivered: '✅ Pedido #{pedido} entregue! Valeu pela compra 🙏',
@@ -308,7 +308,7 @@ export const NotificationsTab = () => {
   };
 
   const handleDeleteInstance = async (instance: WhatsAppInstance) => {
-    if (!window.confirm('Tem certeza que deseja deletar esta instância de WhatsApp?\n\nIsso impedirá de enviar notificaçõs e receber resumo de pedidos')) {
+    if (!window.confirm('Tem certeza que deseja deletar esta instância de WhatsApp?\n\nIsso impedirá de enviar notificações de status e receber resumo de pedidos!')) {
       return;
     }
 
@@ -343,10 +343,10 @@ export const NotificationsTab = () => {
       // Verificar se foi deletado
       if (data?.success) {
         if (data?.evolutionDeleted) {
-          toast.success('✅ Instância deletada da Evolution API e do sistema');
+          toast.success('✅ Instância deletada do sistema');
         } else {
           // Mesmo que Evolution tenha falhado, Supabase foi deletado
-          toast.success('✅ Instância removida do sistema\n⚠️ Evolution API pode estar indisponível');
+          toast.success('✅ Instância removida do sistema\n⚠️  WhatsApp pode estar indisponível');
         }
       } else {
         throw new Error(data?.message || 'Erro desconhecido ao deletar instância');
