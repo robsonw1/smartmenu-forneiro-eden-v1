@@ -162,7 +162,6 @@ const Login = () => {
                   onError={handleGoogleError}
                   text="signin"
                   size="large"
-                  width="100%"
                 />
               </div>
 
@@ -224,7 +223,6 @@ const Login = () => {
                   onError={handleGoogleError}
                   text="signup_with"
                   size="large"
-                  width="100%"
                 />
               </div>
 
