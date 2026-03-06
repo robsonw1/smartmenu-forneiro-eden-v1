@@ -308,7 +308,7 @@ export const NotificationsTab = () => {
   };
 
   const handleDeleteInstance = async (instance: WhatsAppInstance) => {
-    if (!window.confirm('Tem certeza que deseja deletar esta instância de WhatsApp?\n\nIsso removerá a instância tanto do painel admin quanto da Evolution API.')) {
+    if (!window.confirm('Tem certeza que deseja deletar esta instância de WhatsApp?\n\nIsso impedirá de enviar notificaçõs e receber resumo de pedidos')) {
       return;
     }
 
