@@ -12,22 +12,29 @@ export const lovable = {
   auth: {
     signInWithOAuth: async (provider: "google" | "apple", opts?: SignInOptions) => {
       try {
-        const redirectUrl = opts?.redirect_uri || window.location.origin;
-        
+        // Determinar URL de redirecionamento
+        const redirectTo = opts?.redirect_uri || (window.location.origin + '/auth/callback');
+
+        console.log('🔐 Iniciando OAuth:', { provider, redirectTo });
+
+        // Chamar Supabase Auth com redirectTo explícito
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: provider,
           options: {
-            redirectTo: redirectUrl,
+            redirectTo: redirectTo,
             queryParams: opts?.extraParams,
           },
         });
 
         if (error) {
+          console.error('❌ Erro OAuth:', error);
           return { error };
         }
 
+        console.log('✅ OAuth iniciado, redirecionando...');
         return { data, error: null };
       } catch (e) {
+        console.error('🔴 Erro ao iniciar OAuth:', e);
         return { error: e instanceof Error ? e : new Error(String(e)) };
       }
     },
