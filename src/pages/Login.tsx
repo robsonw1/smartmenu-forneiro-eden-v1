@@ -105,11 +105,11 @@ const Login = () => {
 
       if (result.error) {
         console.error('Erro no login:', result.error);
-        toast.error('Erro ao fazer login com Google: ' + result.error.message);
+        toast.error('❌ Erro ao fazer login com Google: ' + result.error.message);
       }
     } catch (error) {
       console.error('Erro inesperado:', error);
-      toast.error('Erro inesperado ao fazer login');
+      toast.error('❌ Erro inesperado ao fazer login');
     }
   };
 
@@ -122,11 +122,11 @@ const Login = () => {
 
       if (result.error) {
         console.error('Erro no registro:', result.error);
-        toast.error('Erro ao fazer registro com Google: ' + result.error.message);
+        toast.error('❌ Erro ao fazer registro com Google: ' + result.error.message);
       }
     } catch (error) {
       console.error('Erro inesperado:', error);
-      toast.error('Erro inesperado ao fazer registro');
+      toast.error('❌ Erro inesperado ao fazer registro');
     }
   };
 
