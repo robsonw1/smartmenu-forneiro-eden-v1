@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Poppins"', 'sans-serif'],
+        display: ['"Quicksand"', 'sans-serif'],
         sans: ['Inter', 'sans-serif'],
       },
       colors: {
