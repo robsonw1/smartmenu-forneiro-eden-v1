@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useLoyaltyStore } from '@/store/useLoyaltyStore';
 import { toast } from 'sonner';
+
+// Normalizar email
+const normalizeEmail = (email: string): string => {
+  return email
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+};
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isProcessing, setIsProcessing] = useState(true);
+  const findOrCreateCustomer = useLoyaltyStore((s) => s.findOrCreateCustomer);
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -27,11 +38,24 @@ export default function AuthCallbackPage() {
         console.log('📧 Email:', session.user.email);
         console.log('🆔 User ID:', session.user.id);
 
-        // 3️⃣ Redirecionar para página principal
-        // O Header vai detectar sessão e atualizar estado
-        toast.success('✅ Autenticado com Google!');
-        
-        // Pequeno delay para garantir que a sessão foi gravada
+        // 3️⃣ Sincronizar com Loyalty Store
+        if (session.user.email) {
+          const normalizedEmail = normalizeEmail(session.user.email);
+          console.log('🔄 Sincronizando com Loyalty Store...');
+          
+          const customer = await findOrCreateCustomer(normalizedEmail);
+          
+          if (customer) {
+            console.log('✅ Cliente sincronizado:', customer.name || normalizedEmail);
+            console.log('💰 Pontos disponíveis:', customer.totalPoints);
+            toast.success('✅ Autenticado com Google!');
+          } else {
+            console.warn('⚠️ Cliente não sincronizado');
+            toast.success('✅ Autenticado com Google!');
+          }
+        }
+
+        // 4️⃣ Redirecionar para página principal
         setTimeout(() => {
           navigate('/', { replace: true });
         }, 500);
@@ -45,7 +69,7 @@ export default function AuthCallbackPage() {
     };
 
     handleAuthCallback();
-  }, [navigate]);
+  }, [navigate, findOrCreateCustomer]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
