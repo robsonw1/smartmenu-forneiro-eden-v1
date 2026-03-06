@@ -307,24 +307,53 @@ export const NotificationsTab = () => {
     }
   };
 
-  const handleDeleteInstance = async (instanceId: string) => {
-    if (!window.confirm('Tem certeza que deseja deletar esta instância de WhatsApp?')) {
+  const handleDeleteInstance = async (instance: WhatsAppInstance) => {
+    if (!window.confirm('Tem certeza que deseja deletar esta instância de WhatsApp?\n\nIsso removerá a instância tanto do painel admin quanto da Evolution API.')) {
       return;
     }
 
     try {
-      const { error } = await (supabase as any)
-        .from('whatsapp_instances')
-        .delete()
-        .eq('id', instanceId);
+      console.log(`🗑️ Deletando instância: ${instance.evolution_instance_name}`);
+      
+      // Obter tenant_id se não estiver no state
+      let currentTenantId = tenantId;
+      if (!currentTenantId) {
+        currentTenantId = localStorage.getItem('admin-tenant-id') || '';
+      }
 
-      if (error) throw error;
+      // Chamar edge function para deletar da Evolution API e do Supabase
+      const { data, error } = await (supabase as any).functions.invoke('delete-whatsapp-instance', {
+        body: {
+          instance_id: instance.id,
+          evolution_instance_name: instance.evolution_instance_name,
+          tenant_id: currentTenantId,
+        },
+      });
 
-      toast.success('Instância deletada com sucesso');
+      if (error) {
+        console.error('❌ Erro ao deletar instância:', error);
+        throw error;
+      }
+
+      console.log(`✅ Resposta da deleção:`, data);
+
+      // Verificar se foi deletado
+      if (data?.success) {
+        if (data?.evolutionDeleted) {
+          toast.success('✅ Instância deletada da Evolution API e do sistema');
+        } else {
+          // Mesmo que Evolution tenha falhado, Supabase foi deletado
+          toast.success('✅ Instância removida do sistema\n⚠️ Evolution API pode estar indisponível');
+        }
+      } else {
+        throw new Error(data?.message || 'Erro desconhecido ao deletar instância');
+      }
+
+      // Recarregar lista de instâncias
       await loadInstances();
     } catch (err) {
-      console.error('Erro ao deletar instância:', err);
-      toast.error('Erro ao deletar instância');
+      console.error('❌ Erro ao deletar instância:', err);
+      toast.error(`Erro ao deletar instância: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     }
   };
 
@@ -499,7 +528,7 @@ export const NotificationsTab = () => {
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDeleteInstance(instance.id)}
+                      onClick={() => handleDeleteInstance(instance)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
