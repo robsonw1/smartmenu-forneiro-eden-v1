@@ -15,6 +15,7 @@ export default {
     extend: {
       fontFamily: {
         display: ['"Quicksand"', 'sans-serif'],
+        heading: ['"Quicksand"', 'sans-serif'],
         sans: ['Inter', 'sans-serif'],
       },
       colors: {
