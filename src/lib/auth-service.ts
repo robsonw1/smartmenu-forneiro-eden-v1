@@ -146,10 +146,41 @@ export async function syncUserWithLoyalty(userEmail: string) {
     const normalizedEmail = normalizeEmail(userEmail);
     const loyaltyStore = useLoyaltyStore.getState();
     
+    console.log('🔄 Sincronizando usuário com Loyalty Store:', normalizedEmail);
     const customer = await loyaltyStore.findOrCreateCustomer(normalizedEmail);
+    
+    if (customer) {
+      console.log('✅ Cliente sincronizado:', customer.name || normalizedEmail);
+      console.log('💰 Pontos:', customer.totalPoints);
+    }
+    
     return { success: true, customer };
   } catch (error) {
-    console.error('Erro em syncUserWithLoyalty:', error);
+    console.error('❌ Erro em syncUserWithLoyalty:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    };
+  }
+}
+
+/**
+ * Sincronizar Google Session com Loyalty Store
+ * Útil para quando Google OAuth redireciona para app
+ */
+export async function syncGoogleSession() {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error || !session?.user?.email) {
+      console.warn('⚠️ Nenhuma sessão Google encontrada');
+      return { success: false, error: 'Sem sessão' };
+    }
+    
+    console.log('🔄 Sincronizando sessão Google:', session.user.email);
+    return await syncUserWithLoyalty(session.user.email);
+  } catch (error) {
+    console.error('❌ Erro em syncGoogleSession:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Erro desconhecido',
