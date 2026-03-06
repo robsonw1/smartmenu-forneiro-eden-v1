@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLoyaltyStore } from '@/store/useLoyaltyStore';
 import { GoogleAuthButton } from '@/components/GoogleAuthButton';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Gift, Star, Sparkles, TrendingUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
@@ -22,6 +23,15 @@ interface PostCheckoutLoyaltyModalProps {
   email: string;
   pointsEarned?: number;
 }
+
+// 🔒 Normalizar email: lowercase + trim + remove acentos
+const normalizeEmail = (email: string): string => {
+  return email
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+};
 
 export function PostCheckoutLoyaltyModal({
   isOpen,
@@ -38,10 +48,59 @@ export function PostCheckoutLoyaltyModal({
   });
   const [isLoading, setIsLoading] = useState(false);
   const [lastCustomerId, setLastCustomerId] = useState<string | null>(null);
+  const [hasGoogleSession, setHasGoogleSession] = useState(false);
 
   const registerCustomer = useLoyaltyStore((s) => s.registerCustomer);
+  const findOrCreateCustomer = useLoyaltyStore((s) => s.findOrCreateCustomer);
   const currentCustomer = useLoyaltyStore((s) => s.currentCustomer);
   const isRemembered = useLoyaltyStore((s) => s.isRemembered);
+
+  // 1️⃣ Verificar se há sessão Google ao abrir modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const checkGoogleSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user?.email) {
+          const normalizedGoogleEmail = normalizeEmail(session.user.email);
+          
+          console.log('📧 Sessão Google detectada:', normalizedGoogleEmail);
+          setCurrentEmail(normalizedGoogleEmail);
+          setHasGoogleSession(true);
+
+          // Auto-carregar cliente
+          const customer = await findOrCreateCustomer(normalizedGoogleEmail);
+          
+          if (customer?.isRegistered) {
+            // Cliente já registrado via Google
+            console.log('✅ Cliente já registrado');
+            setStep('success');
+          } else {
+            // Cliente existe mas não é registrado
+            // Pré-preencher com dados do Google se disponível
+            if (session.user.user_metadata?.name) {
+              setFormData(prev => ({
+                ...prev,
+                name: session.user.user_metadata.name
+              }));
+            }
+            setStep('form');
+          }
+        } else {
+          setHasGoogleSession(false);
+          setStep('auth');
+        }
+      } catch (error) {
+        console.error('Erro ao checar sessão Google:', error);
+        setHasGoogleSession(false);
+        setStep('auth');
+      }
+    };
+
+    checkGoogleSession();
+  }, [isOpen, findOrCreateCustomer]);
 
   // ✅ Função para formatar telefone
   const formatPhoneNumber = (phone: string): string => {
@@ -67,12 +126,14 @@ export function PostCheckoutLoyaltyModal({
       setCurrentEmail('');
       setFormData({ name: '', cpf: '', phone: '' });
       setLastCustomerId(null);
+      setHasGoogleSession(false);
     }
     onClose();
   };
 
   const handleGoogleSuccess = (googleEmail: string) => {
-    setCurrentEmail(googleEmail);
+    const normalizedEmail = normalizeEmail(googleEmail);
+    setCurrentEmail(normalizedEmail);
     setStep('form');
     toast.success('✅ Email do Google preenchido!');
   };

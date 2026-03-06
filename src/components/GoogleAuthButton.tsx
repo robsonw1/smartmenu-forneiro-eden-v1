@@ -3,21 +3,35 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { useLoyaltyStore } from '@/store/useLoyaltyStore';
 
 interface GoogleAuthButtonProps {
   onSuccess?: (email: string) => void;
   loading?: boolean;
 }
 
+// 🔒 Normalizar email: lowercase + trim + remove acentos
+const normalizeEmail = (email: string): string => {
+  return email
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+};
+
 export function GoogleAuthButton({ onSuccess, loading = false }: GoogleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const findOrCreateCustomer = useLoyaltyStore((s) => s.findOrCreateCustomer);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      // 1️⃣ Iniciar OAuth com Supabase
+      // O callback_url precisa estar registrado no Supabase Console
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -26,20 +40,26 @@ export function GoogleAuthButton({ onSuccess, loading = false }: GoogleAuthButto
       });
 
       if (error) {
-        toast.error('Erro ao conectar com Google');
-        console.error('Google auth error:', error);
+        console.error('🔴 Erro ao iniciar OAuth:', error);
+        
+        // Diferenciação de erros
+        if (error.message?.includes('popup')) {
+          toast.error('⚠️ Abra o popup de autenticação');
+        } else if (error.message?.includes('network')) {
+          toast.error('❌ Erro de conexão. Tente novamente');
+        } else {
+          toast.error('❌ Erro ao conectar com Google');
+        }
         return;
       }
 
-      // Se der sucesso, pega o email do usuário autenticado
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData?.session?.user?.email) {
-        onSuccess?.(sessionData.session.user.email);
-        toast.success('✅ Conectado com Google!');
-      }
+      // 2️⃣ Se o OAuth começou, a página será redirecionada
+      // A página /auth/callback vai processar o resultado
+      console.log('✅ Redirecionando para Google...');
+
     } catch (error) {
-      console.error('Erro:', error);
-      toast.error('Erro ao conectar com Google');
+      console.error('🔴 Erro não previsto:', error);
+      toast.error('❌ Erro ao conectar com Google');
     } finally {
       setIsLoading(false);
     }
