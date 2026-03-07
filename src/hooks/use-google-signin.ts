@@ -37,47 +37,78 @@ export const useGoogleSignIn = () => {
         console.log('🔐 Autenticando com Google ID Token (SEM REDIRECT!)...');
 
         // ✅ Chamar Supabase direto - signInWithIdToken funciona no cliente
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: idToken,
-        });
+        // Com retry automático em caso de erro transitório
+        let retries = 0;
+        let lastError: any = null;
 
-        if (error) {
-          console.error('❌ Erro ao autenticar:', error);
-          toast.error('❌ Erro na autenticação: ' + error.message);
-          return { success: false, error };
-        }
+        while (retries < 2) {
+          try {
+            const { data, error } = await supabase.auth.signInWithIdToken({
+              provider: 'google',
+              token: idToken,
+            });
 
-        if (!data.session) {
-          console.error('❌ Sessão não criada');
-          toast.error('❌ Erro: Sessão não foi criada');
-          return { success: false, error: new Error('Sem sessão') };
-        }
+            if (error) {
+              lastError = error;
+              console.error(`❌ Tentativa ${retries + 1}: Erro ao autenticar:`, error.message);
+              
+              // Se for erro de banco de dados transitório, fazer retry
+              if (error.message?.includes('Database error') && retries < 1) {
+                retries++;
+                console.log(`⏳ Tentando novamente em 1 segundo...`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                continue;
+              }
 
-        // 2️⃣ Sessão criada com sucesso
-        console.log('✅ ID Token validado, sessão criada');
-        console.log('📧 Email:', data.session.user.email);
-        console.log('🆔 User ID:', data.session.user.id);
+              // Outro erro - não fazer retry
+              toast.error('❌ Erro na autenticação: ' + error.message);
+              return { success: false, error };
+            }
 
-        // 3️⃣ Sincronizar com Loyalty Store
-        if (data.session.user.email) {
-          const normalizedEmail = normalizeEmail(data.session.user.email);
-          console.log('🔄 Sincronizando com Loyalty Store...');
+            if (!data.session) {
+              console.error('❌ Sessão não criada');
+              toast.error('❌ Erro: Sessão não foi criada');
+              return { success: false, error: new Error('Sem sessão') };
+            }
 
-          const customer = await findOrCreateCustomer(normalizedEmail);
+            // ✅ Autenticação bem-sucedida
+            console.log('✅ ID Token validado, sessão criada');
+            console.log('📧 Email:', data.session.user.email);
+            console.log('🆔 User ID:', data.session.user.id);
 
-          if (customer) {
-            console.log('✅ Cliente sincronizado:', customer.name || normalizedEmail);
-            console.log('💰 Pontos disponíveis:', customer.totalPoints);
-            setCurrentCustomer(customer);
-            toast.success('✅ Autenticado com Google!');
-          } else {
-            console.warn('⚠️ Cliente não sincronizado ainda');
-            toast.success('✅ Autenticado com Google!');
+            // 3️⃣ Sincronizar com Loyalty Store
+            if (data.session.user.email) {
+              const normalizedEmail = normalizeEmail(data.session.user.email);
+              console.log('🔄 Sincronizando com Loyalty Store...');
+
+              const customer = await findOrCreateCustomer(normalizedEmail);
+
+              if (customer) {
+                console.log('✅ Cliente sincronizado:', customer.name || normalizedEmail);
+                console.log('💰 Pontos disponíveis:', customer.totalPoints);
+                setCurrentCustomer(customer);
+                toast.success('✅ Autenticado com Google!');
+              } else {
+                console.warn('⚠️ Cliente não sincronizado ainda');
+                toast.success('✅ Autenticado com Google!');
+              }
+            }
+
+            return { success: true, session: data.session };
+          } catch (innerError) {
+            lastError = innerError;
+            console.error(`❌ Tentativa ${retries + 1} - Erro interno:`, innerError);
+            retries++;
+            if (retries < 2) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
         }
 
-        return { success: true, session: data.session };
+        // Se chegou aqui depois de retries
+        console.error('❌ Autenticação falhou após retries');
+        toast.error('❌ Erro na autenticação. Tente novamente.');
+        return { success: false, error: lastError };
       } catch (error) {
         console.error('🔴 Erro crítico ao autenticar:', error);
         toast.error('❌ Erro inesperado na autenticação');
