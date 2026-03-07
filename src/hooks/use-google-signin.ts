@@ -79,9 +79,12 @@ export const useGoogleSignIn = () => {
             // 3️⃣ Sincronizar com Loyalty Store
             if (data.session.user.email) {
               const normalizedEmail = normalizeEmail(data.session.user.email);
+              const googleName = data.session.user.user_metadata?.name || data.session.user.user_metadata?.full_name || undefined;
+              
               console.log('🔄 Sincronizando com Loyalty Store...');
+              console.log('👤 Nome do Google:', googleName);
 
-              const customer = await findOrCreateCustomer(normalizedEmail);
+              const customer = await findOrCreateCustomer(normalizedEmail, googleName, true); // ✅ isRegistered: true
 
               if (customer) {
                 console.log('✅ Cliente sincronizado:', customer.name || normalizedEmail);
