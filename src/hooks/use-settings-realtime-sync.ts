@@ -24,7 +24,7 @@ export function useSettingsRealtimeSync() {
           .from('settings')
           .select('*')
           .eq('id', 'store-settings')
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('❌ [SETTINGS-SYNC] Erro ao carregar settings:', error.message);
