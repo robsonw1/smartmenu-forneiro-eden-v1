@@ -112,7 +112,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         .from('settings')
         .select('*')
         .eq('id', 'store-settings')
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('❌ [LOAD-SUPABASE] Erro ao carregar settings:', error);
