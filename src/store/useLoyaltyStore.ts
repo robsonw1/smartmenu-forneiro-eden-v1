@@ -59,7 +59,7 @@ interface LoyaltyStore {
   isRemembered: boolean;
   
   // Actions
-  findOrCreateCustomer: (email: string) => Promise<Customer | null>;
+  findOrCreateCustomer: (email: string, name?: string, isRegistered?: boolean) => Promise<Customer | null>;
   registerCustomer: (email: string, cpf: string, name: string, phone?: string) => Promise<boolean>;
   addPointsFromPurchase: (customerId: string, amount: number, orderId: string, pointsRedeemed?: number) => Promise<void>;
   addSignupBonus: (customerId: string) => Promise<void>;
@@ -125,7 +125,7 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
   activeCoupon: null,
   isRemembered: false,
 
-  findOrCreateCustomer: async (email: string) => {
+  findOrCreateCustomer: async (email: string, name?: string, isRegistered?: boolean) => {
     try {
       // 🔒 Normalizar email para evitar múltiplas contas (URGENTE #6)
       const normalizedEmail = normalizeEmail(email);
@@ -135,7 +135,7 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
         .from('customers')
         .select('*')
         .eq('email', normalizedEmail)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Erro ao buscar cliente:', error);
@@ -148,12 +148,17 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
         return customer;
       }
 
-      // Criar novo cliente não registrado (email já será normalizado pelo trigger)
+      // Criar novo cliente (Google OAuth = registrado, Manual = não registrado)
       const { data: newCustomer, error: createError } = await (supabase as any)
         .from('customers')
-        .insert([{ email: normalizedEmail, is_registered: false, created_at: new Date() }])
+        .insert([{ 
+          email: normalizedEmail, 
+          name: name || null,
+          is_registered: isRegistered ?? false, 
+          created_at: new Date() 
+        }])
         .select()
-        .single();
+        .maybeSingle();
 
       if (createError) {
         console.error('Erro ao criar cliente:', createError);
@@ -162,6 +167,12 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
 
       const customer = mapCustomerFromDB(newCustomer);
       set({ currentCustomer: customer, points: 0 });
+      
+      // Se registrado via Google, adicionar signup bonus
+      if (isRegistered) {
+        await get().addSignupBonus(normalizedEmail);
+      }
+      
       return customer;
     } catch (error) {
       console.error('Erro em findOrCreateCustomer:', error);
