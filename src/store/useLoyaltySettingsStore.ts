@@ -30,7 +30,7 @@ export const useLoyaltySettingsStore = create<LoyaltySettingsStore>((set, get) =
       const { data, error } = await (supabase as any)
         .from('loyalty_settings')
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Erro ao carregar configurações de fidelização:', error);
