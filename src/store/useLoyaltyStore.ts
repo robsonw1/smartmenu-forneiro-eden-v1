@@ -134,39 +134,39 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
       // Procurar cliente existente - com timeout de segurança
       console.log('🔍 [FIND-OR-CREATE] Query SELECT iniciada...');
       
-      // Usar Promise.race com timeout para evitar travamento
-      const selectPromise = (supabase as any)
-        .from('customers')
-        .select('id, email, name, total_points, total_spent, total_purchases, is_registered, created_at, registered_at')
-        .eq('email', normalizedEmail)
-        .limit(1)
-        .then((result: any) => {
-          console.log('🔍 [FIND-OR-CREATE] SELECT retornou:', result);
-          return result;
-        });
+      try {
+        const { data, error } = await (supabase as any)
+          .from('customers')
+          .select('id, email, name, total_points, total_spent, total_purchases, is_registered, created_at, registered_at')
+          .eq('email', normalizedEmail)
+          .single();
 
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('SELECT timeout')), 5000)
-      );
+        console.log('🔍 [FIND-OR-CREATE] SELECT resultado:', { data, error });
 
-      const { data, error } = await Promise.race([selectPromise, timeoutPromise]) as any;
+        if (error) {
+          // PGRST116 = "multiple rows" ou similar - ignorar
+          if (!error.message?.includes('406') && error.code !== 'PGRST116') {
+            console.error('❌ [FIND-OR-CREATE] Erro na query SELECT:', error);
+          }
+        }
 
-      if (error) {
-        console.error('❌ [FIND-OR-CREATE] Erro na query SELECT:', error);
-        // Continuar mesmo com erro - tentar criar novo cliente
-      }
-
-      if (data && data.length > 0) {
-        console.log('✅ Cliente ENCONTRADO:', data[0]);
-        const customer = mapCustomerFromDB(data[0]);
-        console.log('📊 Cliente mapeado:', customer);
-        set({ currentCustomer: customer, points: customer.totalPoints });
-        console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente encontrado:', customer.email);
-        return customer;
+        if (data) {
+          console.log('✅ Cliente ENCONTRADO:', data);
+          const customer = mapCustomerFromDB(data);
+          console.log('📊 Cliente mapeado:', customer);
+          set({ currentCustomer: customer, points: customer.totalPoints });
+          console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente encontrado:', customer.email);
+          return customer;
+        }
+      } catch (selectError) {
+        console.error('❌ [FIND-OR-CREATE] Exceção no SELECT:', selectError);
+        // Continuar - tentar criar novo cliente
       }
 
       // Criar novo cliente
       console.log('🆕 [FIND-OR-CREATE] INSERT iniciado...', { email: normalizedEmail, name, isRegistered });
+      
+      // ⚠️ NÃO especificar `id` - deixar PostgreSQL gerar via UUID
       const insertData = {
         email: normalizedEmail, 
         name: name || null,
@@ -175,67 +175,58 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
       };
       console.log('🆕 [FIND-OR-CREATE] Dados para INSERT:', insertData);
 
-      const insertPromise = (supabase as any)
-        .from('customers')
-        .insert([insertData])
-        .select('id, email, name, total_points, total_spent, total_purchases, is_registered, created_at, registered_at')
-        .then((result: any) => {
-          console.log('🆕 [FIND-OR-CREATE] INSERT retornou:', result);
-          return result;
-        });
-
-      const insertTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('INSERT timeout')), 5000)
-      );
-
-      const { data: newCustomer, error: createError } = await Promise.race([insertPromise, insertTimeoutPromise]) as any;
-
-      if (createError) {
-        console.error('❌ [FIND-OR-CREATE] Erro ao criar cliente:', createError);
-        return null;
-      }
-
-      if (!newCustomer || newCustomer.length === 0) {
-        console.error('❌ [FIND-OR-CREATE] Nenhum cliente retornado após INSERT');
-        return null;
-      }
-
-      console.log('✅ Cliente CRIADO:', newCustomer[0]);
-      const customer = mapCustomerFromDB(newCustomer[0]);
-      console.log('📊 Cliente novo mapeado:', customer);
-      set({ currentCustomer: customer, points: customer?.totalPoints || 0 });
-      
-      // Se registrado via Google, adicionar signup bonus
-      if (isRegistered) {
-        console.log('🎁 [FIND-OR-CREATE] Adicionando signup bonus...');
-        await get().addSignupBonus(normalizedEmail);
-        
-        // Recarregar cliente para pegar pontos atualizados
-        console.log('🔄 [FIND-OR-CREATE] Recarregando cliente com bonus...');
-        const reloadPromise = (supabase as any)
+      try {
+        const { data: newCustomer, error: createError } = await (supabase as any)
           .from('customers')
+          .insert([insertData])
           .select('id, email, name, total_points, total_spent, total_purchases, is_registered, created_at, registered_at')
-          .eq('email', normalizedEmail)
-          .limit(1)
-          .then((result: any) => result);
+          .single();
 
-        const reloadTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Reload timeout')), 5000)
-        );
-        
-        const { data: updated } = await Promise.race([reloadPromise, reloadTimeoutPromise]) as any;
-        
-        if (updated && updated.length > 0) {
-          const updatedCustomer = mapCustomerFromDB(updated[0]);
-          console.log('📊 Cliente atualizado com bonus:', updatedCustomer);
-          set({ currentCustomer: updatedCustomer, points: updatedCustomer.totalPoints });
-          console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente com bonus:', updatedCustomer.email);
-          return updatedCustomer;
+        console.log('🆕 [FIND-OR-CREATE] INSERT resultado:', { newCustomer, createError });
+
+        if (createError) {
+          console.error('❌ [FIND-OR-CREATE] Erro ao criar cliente:', createError);
+          return null;
         }
+
+        if (!newCustomer) {
+          console.error('❌ [FIND-OR-CREATE] Nenhum cliente retornado após INSERT');
+          return null;
+        }
+
+        console.log('✅ Cliente CRIADO:', newCustomer);
+        const customer = mapCustomerFromDB(newCustomer);
+        console.log('📊 Cliente novo mapeado:', customer);
+        set({ currentCustomer: customer, points: customer?.totalPoints || 0 });
+        
+        // Se registrado via Google, adicionar signup bonus
+        if (isRegistered) {
+          console.log('🎁 [FIND-OR-CREATE] Adicionando signup bonus...');
+          await get().addSignupBonus(normalizedEmail);
+          
+          // Recarregar cliente para pegar pontos atualizados
+          console.log('🔄 [FIND-OR-CREATE] Recarregando cliente com bonus...');
+          const { data: updated } = await (supabase as any)
+            .from('customers')
+            .select('id, email, name, total_points, total_spent, total_purchases, is_registered, created_at, registered_at')
+            .eq('email', normalizedEmail)
+            .single();
+          
+          if (updated) {
+            const updatedCustomer = mapCustomerFromDB(updated);
+            console.log('📊 Cliente atualizado com bonus:', updatedCustomer);
+            set({ currentCustomer: updatedCustomer, points: updatedCustomer.totalPoints });
+            console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente com bonus:', updatedCustomer.email);
+            return updatedCustomer;
+          }
+        }
+        
+        console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente novo:', customer?.email);
+        return customer;
+      } catch (error) {
+        console.error('❌ [FIND-OR-CREATE] Exceção no INSERT:', error);
+        return null;
       }
-      
-      console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente novo:', customer?.email);
-      return customer;
     } catch (error) {
       console.error('❌ [FIND-OR-CREATE] EXCEÇÃO:', error);
       return null;
