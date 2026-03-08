@@ -131,32 +131,41 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
       const normalizedEmail = normalizeEmail(email);
       console.log('🔍 [FIND-OR-CREATE] START - Email:', normalizedEmail, '| Name:', name, '| isRegistered:', isRegistered);
       
-      // Procurar cliente existente
+      // Procurar cliente existente - com timeout de segurança
       console.log('🔍 [FIND-OR-CREATE] Query SELECT iniciada...');
-      const { data, error } = await (supabase as any)
+      
+      // Usar Promise.race com timeout para evitar travamento
+      const selectPromise = (supabase as any)
         .from('customers')
-        .select()  // Sem o '*' para evitar problemas
+        .select('id, email, name, total_points, total_spent, total_purchases, is_registered, created_at, registered_at')
         .eq('email', normalizedEmail)
-        .maybeSingle();
+        .limit(1)
+        .then((result: any) => {
+          console.log('🔍 [FIND-OR-CREATE] SELECT retornou:', result);
+          return result;
+        });
 
-      console.log('🔍 [FIND-OR-CREATE] Query SELECT resultado:', { data, error });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('SELECT timeout')), 5000)
+      );
+
+      const { data, error } = await Promise.race([selectPromise, timeoutPromise]) as any;
 
       if (error) {
-        if (error.code !== 'PGRST116') {
-          console.error('❌ Erro ao buscar cliente:', error.message);
-        }
+        console.error('❌ [FIND-OR-CREATE] Erro na query SELECT:', error);
+        // Continuar mesmo com erro - tentar criar novo cliente
       }
 
-      if (data) {
-        console.log('✅ Cliente ENCONTRADO:', data);
-        const customer = mapCustomerFromDB(data);
+      if (data && data.length > 0) {
+        console.log('✅ Cliente ENCONTRADO:', data[0]);
+        const customer = mapCustomerFromDB(data[0]);
         console.log('📊 Cliente mapeado:', customer);
         set({ currentCustomer: customer, points: customer.totalPoints });
         console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente encontrado:', customer.email);
         return customer;
       }
 
-      // Criar novo cliente (Google OAuth = registrado, Manual = não registrado)
+      // Criar novo cliente
       console.log('🆕 [FIND-OR-CREATE] INSERT iniciado...', { email: normalizedEmail, name, isRegistered });
       const insertData = {
         email: normalizedEmail, 
@@ -166,26 +175,33 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
       };
       console.log('🆕 [FIND-OR-CREATE] Dados para INSERT:', insertData);
 
-      const { data: newCustomer, error: createError } = await (supabase as any)
+      const insertPromise = (supabase as any)
         .from('customers')
         .insert([insertData])
-        .select()  // Sem o '*'
-        .maybeSingle();
+        .select('id, email, name, total_points, total_spent, total_purchases, is_registered, created_at, registered_at')
+        .then((result: any) => {
+          console.log('🆕 [FIND-OR-CREATE] INSERT retornou:', result);
+          return result;
+        });
 
-      console.log('🆕 [FIND-OR-CREATE] INSERT resultado:', { newCustomer, createError });
+      const insertTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('INSERT timeout')), 5000)
+      );
+
+      const { data: newCustomer, error: createError } = await Promise.race([insertPromise, insertTimeoutPromise]) as any;
 
       if (createError) {
         console.error('❌ [FIND-OR-CREATE] Erro ao criar cliente:', createError);
         return null;
       }
 
-      if (!newCustomer) {
+      if (!newCustomer || newCustomer.length === 0) {
         console.error('❌ [FIND-OR-CREATE] Nenhum cliente retornado após INSERT');
         return null;
       }
 
-      console.log('✅ Cliente CRIADO:', newCustomer);
-      const customer = mapCustomerFromDB(newCustomer);
+      console.log('✅ Cliente CRIADO:', newCustomer[0]);
+      const customer = mapCustomerFromDB(newCustomer[0]);
       console.log('📊 Cliente novo mapeado:', customer);
       set({ currentCustomer: customer, points: customer?.totalPoints || 0 });
       
@@ -196,14 +212,21 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
         
         // Recarregar cliente para pegar pontos atualizados
         console.log('🔄 [FIND-OR-CREATE] Recarregando cliente com bonus...');
-        const { data: updated } = await (supabase as any)
+        const reloadPromise = (supabase as any)
           .from('customers')
-          .select()
+          .select('id, email, name, total_points, total_spent, total_purchases, is_registered, created_at, registered_at')
           .eq('email', normalizedEmail)
-          .maybeSingle();
-          
-        if (updated) {
-          const updatedCustomer = mapCustomerFromDB(updated);
+          .limit(1)
+          .then((result: any) => result);
+
+        const reloadTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Reload timeout')), 5000)
+        );
+        
+        const { data: updated } = await Promise.race([reloadPromise, reloadTimeoutPromise]) as any;
+        
+        if (updated && updated.length > 0) {
+          const updatedCustomer = mapCustomerFromDB(updated[0]);
           console.log('📊 Cliente atualizado com bonus:', updatedCustomer);
           set({ currentCustomer: updatedCustomer, points: updatedCustomer.totalPoints });
           console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente com bonus:', updatedCustomer.email);
