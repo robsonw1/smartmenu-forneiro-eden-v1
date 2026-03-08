@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLoyaltyStore } from '@/store/useLoyaltyStore';
-import { GoogleAuthButton } from '@/components/GoogleAuthButton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Gift, Star, Sparkles, TrendingUp } from 'lucide-react';
@@ -131,13 +130,6 @@ export function PostCheckoutLoyaltyModal({
     onClose();
   };
 
-  const handleGoogleSuccess = (googleEmail: string) => {
-    const normalizedEmail = normalizeEmail(googleEmail);
-    setCurrentEmail(normalizedEmail);
-    setStep('form');
-    toast.success('✅ Email do Google preenchido!');
-  };
-
   const handleRegister = async () => {
     if (!formData.name.trim() || !formData.cpf.trim()) {
       toast.error('Preencha o nome e CPF');
@@ -254,17 +246,6 @@ export function PostCheckoutLoyaltyModal({
             </DialogHeader>
 
             <div className="space-y-4 py-4">
-              <GoogleAuthButton onSuccess={handleGoogleSuccess} loading={isLoading} />
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">ou</span>
-                </div>
-              </div>
-
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-4 space-y-3">
                 <div className="flex items-start gap-3">
                   <Star className="w-5 h-5 text-primary mt-1" />
