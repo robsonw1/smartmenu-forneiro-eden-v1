@@ -81,18 +81,22 @@ export const useGoogleSignIn = () => {
               const normalizedEmail = normalizeEmail(data.session.user.email);
               const googleName = data.session.user.user_metadata?.name || data.session.user.user_metadata?.full_name || undefined;
               
-              console.log('🔄 Sincronizando com Loyalty Store...');
+              console.log('🔄 [GOOGLE-SIGNIN] Sincronizando com Loyalty Store...');
               console.log('👤 Nome do Google:', googleName);
+              console.log('📧 Email normalizado:', normalizedEmail);
 
               const customer = await findOrCreateCustomer(normalizedEmail, googleName, true); // ✅ isRegistered: true
+
+              console.log('🔄 [GOOGLE-SIGNIN] findOrCreateCustomer retornou:', customer);
 
               if (customer) {
                 console.log('✅ Cliente sincronizado:', customer.name || normalizedEmail);
                 console.log('💰 Pontos disponíveis:', customer.totalPoints);
                 setCurrentCustomer(customer);
+                console.log('✅ [GOOGLE-SIGNIN] setCurrentCustomer chamado');
                 toast.success('✅ Autenticado com Google!');
               } else {
-                console.warn('⚠️ Cliente não sincronizado ainda');
+                console.warn('⚠️ [GOOGLE-SIGNIN] findOrCreateCustomer retornou NULL!');
                 toast.success('✅ Autenticado com Google!');
               }
             }
