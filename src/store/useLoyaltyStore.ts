@@ -199,7 +199,6 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
         console.log('📊 Cliente novo mapeado:', customer);
         set({ currentCustomer: customer, points: customer?.totalPoints || 0 });
         
-        // Se registrado via Google, adicionar signup bonus
         if (isRegistered) {
           console.log('🎁 [FIND-OR-CREATE] Adicionando signup bonus...');
           await get().addSignupBonus(normalizedEmail);
