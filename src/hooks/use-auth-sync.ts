@@ -40,19 +40,23 @@ export function useAuthSync() {
         // Se há sessão e email, sincronizar com Loyalty Store
         if (session?.user?.email) {
           const normalizedEmail = normalizeEmail(session.user.email);
+          const googleName = session.user.user_metadata?.name || session.user.user_metadata?.full_name || undefined;
           
-          console.log('🔄 Sincronizando Auth com Loyalty Store...');
+          console.log('🔄 [INIT-SYNC] Sincronizando Auth com Loyalty Store...');
           console.log('📧 Email:', normalizedEmail);
+          console.log('👤 Nome:', googleName);
 
           // Auto-carregar dados do cliente (ou criar se não existir)
-          const customer = await findOrCreateCustomer(normalizedEmail);
+          // Se for Google (tem user_metadata com name), pass isRegistered: true
+          const isGoogle = !!googleName;
+          const customer = await findOrCreateCustomer(normalizedEmail, googleName, isGoogle);
           
           if (customer) {
-            console.log('✅ Cliente sincronizado:', customer.name || normalizedEmail);
+            console.log('✅ [INIT-SYNC] Cliente sincronizado:', customer.name || normalizedEmail);
             console.log('💰 Pontos disponíveis:', customer.totalPoints);
-            setCurrentCustomer(customer); // 👈 CRITICAL FIX!
+            setCurrentCustomer(customer);
           } else {
-            console.log('⚠️ Falha ao sincronizar cliente');
+            console.log('⚠️ [INIT-SYNC] Falha ao sincronizar cliente');
           }
         } else {
           // Sem sessão = sem cliente
@@ -78,10 +82,12 @@ export function useAuthSync() {
           if (session?.user?.email) {
             const normalizedEmail = normalizeEmail(session.user.email);
             console.log('🆕 Login detectado:', normalizedEmail);
+            console.log('🔄 [AUTH-SYNC] Session user_metadata:', session.user.user_metadata);
             console.log('🔄 [AUTH-SYNC] Chamando findOrCreateCustomer...');
 
-            // Auto-sincronizar
-            const customer = await findOrCreateCustomer(normalizedEmail);
+            // Auto-sincronizar - PASSAR name e isRegistered para Google
+            const googleName = session.user.user_metadata?.name || session.user.user_metadata?.full_name || undefined;
+            const customer = await findOrCreateCustomer(normalizedEmail, googleName, true);
             console.log('🔄 [AUTH-SYNC] findOrCreateCustomer retornou:', customer);
             
             if (customer) {
