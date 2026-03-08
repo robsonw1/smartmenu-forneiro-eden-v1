@@ -129,6 +129,7 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
     try {
       // 🔒 Normalizar email para evitar múltiplas contas (URGENTE #6)
       const normalizedEmail = normalizeEmail(email);
+      console.log('🔍 [FIND-OR-CREATE] Buscando cliente:', normalizedEmail);
       
       // Procurar cliente existente
       const { data, error } = await (supabase as any)
@@ -138,17 +139,20 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao buscar cliente:', error);
+        console.error('❌ Erro ao buscar cliente:', error);
         return null;
       }
 
       if (data) {
+        console.log('✅ Cliente ENCONTRADO:', data);
         const customer = mapCustomerFromDB(data);
+        console.log('📊 Cliente mapeado:', customer);
         set({ currentCustomer: customer, points: customer.totalPoints });
         return customer;
       }
 
       // Criar novo cliente (Google OAuth = registrado, Manual = não registrado)
+      console.log('🆕 Criando novo cliente...', { email: normalizedEmail, name, isRegistered });
       const { data: newCustomer, error: createError } = await (supabase as any)
         .from('customers')
         .insert([{ 
@@ -157,25 +161,40 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
           is_registered: isRegistered ?? false, 
           created_at: new Date() 
         }])
-        .select()
+        .select('*')
         .maybeSingle();
 
       if (createError) {
-        console.error('Erro ao criar cliente:', createError);
+        console.error('❌ Erro ao criar cliente:', createError);
         return null;
       }
 
+      console.log('✅ Cliente CRIADO:', newCustomer);
       const customer = mapCustomerFromDB(newCustomer);
-      set({ currentCustomer: customer, points: 0 });
+      console.log('📊 Cliente novo mapeado:', customer);
+      set({ currentCustomer: customer, points: customer?.totalPoints || 0 });
       
       // Se registrado via Google, adicionar signup bonus
       if (isRegistered) {
+        console.log('🎁 Adicionando signup bonus...');
         await get().addSignupBonus(normalizedEmail);
+        // Recarregar cliente para pegar pontos atualizados
+        const { data: updated } = await (supabase as any)
+          .from('customers')
+          .select('*')
+          .eq('email', normalizedEmail)
+          .maybeSingle();
+        if (updated) {
+          const updatedCustomer = mapCustomerFromDB(updated);
+          console.log('📊 Cliente atualizado com bonus:', updatedCustomer);
+          set({ currentCustomer: updatedCustomer, points: updatedCustomer.totalPoints });
+          return updatedCustomer;
+        }
       }
       
       return customer;
     } catch (error) {
-      console.error('Erro em findOrCreateCustomer:', error);
+      console.error('❌ Erro em findOrCreateCustomer:', error);
       return null;
     }
   },
