@@ -11,8 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useLoyaltyStore } from '@/store/useLoyaltyStore';
-import { useGoogleSignIn } from '@/hooks/use-google-signin';
-import { GoogleLogin } from '@react-oauth/google';
 import { toast } from 'sonner';
 import { LogIn, Mail, Lock } from 'lucide-react';
 
@@ -33,7 +31,6 @@ export function CustomerLoginModal({
   const [isLoading, setIsLoading] = useState(false);
 
   const loginCustomer = useLoyaltyStore((s) => s.loginCustomer);
-  const { authWithGoogleIdToken } = useGoogleSignIn();
 
   const formatCpf = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
@@ -81,37 +78,6 @@ export function CustomerLoginModal({
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
-    try {
-      if (!credentialResponse.credential) {
-        toast.error('❌ Erro: Nenhum token recebido do Google');
-        return;
-      }
-
-      console.log('🎉 Google Login via Modal - Processando...');
-      const result = await authWithGoogleIdToken(credentialResponse.credential);
-
-      if (result.success) {
-        toast.success('✅ Autenticado com Google!');
-        setEmail('');
-        setCpf('');
-        setRememberMe(false);
-        onClose();
-        onSuccess?.();
-      } else {
-        toast.error('❌ Erro ao autenticar com Google');
-      }
-    } catch (error) {
-      console.error('🔴 Erro ao processar login Google no modal:', error);
-      toast.error('❌ Erro ao processar autenticação Google');
-    }
-  };
-
-  const handleGoogleError = () => {
-    console.error('❌ Erro no Google Sign-In');
-    toast.error('❌ Erro ao fazer login com Google. Tente novamente.');
-  };
-
   const handleClose = () => {
     setEmail('');
     setCpf('');
@@ -132,25 +98,6 @@ export function CustomerLoginModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Google Login Button */}
-          <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              text="signin"
-              size="large"
-            />
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-background text-muted-foreground">OU</span>
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="login-email">Email *</Label>
             <Input
