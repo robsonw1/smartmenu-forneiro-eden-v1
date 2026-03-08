@@ -78,14 +78,20 @@ export function useAuthSync() {
           if (session?.user?.email) {
             const normalizedEmail = normalizeEmail(session.user.email);
             console.log('🆕 Login detectado:', normalizedEmail);
+            console.log('🔄 [AUTH-SYNC] Chamando findOrCreateCustomer...');
 
             // Auto-sincronizar
             const customer = await findOrCreateCustomer(normalizedEmail);
+            console.log('🔄 [AUTH-SYNC] findOrCreateCustomer retornou:', customer);
+            
             if (customer) {
               console.log('✅ Cliente carregado:', customer.name || normalizedEmail);
               console.log('💰 Pontos:', customer.totalPoints);
-              setCurrentCustomer(customer); // 👈 CRITICAL FIX!
+              setCurrentCustomer(customer);
+              console.log('✅ [AUTH-SYNC] setCurrentCustomer chamado');
               toast.success('✅ Cliente sincronizado!');
+            } else {
+              console.warn('⚠️ [AUTH-SYNC] findOrCreateCustomer retornou NULL!');
             }
           }
           break;
