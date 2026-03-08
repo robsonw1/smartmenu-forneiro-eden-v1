@@ -50,6 +50,7 @@ export function useAuthSync() {
           if (customer) {
             console.log('✅ Cliente sincronizado:', customer.name || normalizedEmail);
             console.log('💰 Pontos disponíveis:', customer.totalPoints);
+            setCurrentCustomer(customer); // 👈 CRITICAL FIX!
           } else {
             console.log('⚠️ Falha ao sincronizar cliente');
           }
@@ -81,6 +82,9 @@ export function useAuthSync() {
             // Auto-sincronizar
             const customer = await findOrCreateCustomer(normalizedEmail);
             if (customer) {
+              console.log('✅ Cliente carregado:', customer.name || normalizedEmail);
+              console.log('💰 Pontos:', customer.totalPoints);
+              setCurrentCustomer(customer); // 👈 CRITICAL FIX!
               toast.success('✅ Cliente sincronizado!');
             }
           }
