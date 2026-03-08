@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,12 +9,10 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { signUpWithEmail, signInWithEmail } from '@/lib/auth-service';
 import { useLoyaltyStore } from '@/store/useLoyaltyStore';
-import { useGoogleSignIn } from '@/hooks/use-google-signin';
 
 const Login = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { authWithGoogleIdToken } = useGoogleSignIn();
 
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -96,36 +93,6 @@ const Login = () => {
     }
   };
 
-  // ✅ NOVO: Handle Google Login/Signup com ID Token (Zero redirects!)
-  const handleGoogleSuccess = async (credentialResponse: any) => {
-    try {
-      if (!credentialResponse.credential) {
-        toast.error('❌ Erro: Nenhum token recebido do Google');
-        return;
-      }
-
-      console.log('🎉 Google ID Token recebido com sucesso - SEM REDIRECT!');
-      const result = await authWithGoogleIdToken(credentialResponse.credential);
-
-      if (result.success) {
-        console.log('🚀 Redirecionando para home...');
-        setTimeout(() => navigate('/', { replace: true }), 1000);
-      }
-    } catch (error) {
-      console.error('🔴 Erro ao processar login Google:', error);
-      toast.error('❌ Erro ao processar autenticação Google');
-    }
-  };
-
-  const handleGoogleError = () => {
-    console.error('❌ Erro no Google Sign-In');
-    console.log('💡 Dicas:');
-    console.log('   - Verifique se está usando uma conta Google válida');
-    console.log('   - Verifique a conexão com internet');
-    console.log('   - Limpe o cache e tente novamente');
-    toast.error('❌ Erro ao fazer login com Google. Tente novamente.');
-  };
-
   // Mostra spinner enquanto verifica se já há sessão ativa
   if (loading) {
     return (
@@ -155,25 +122,6 @@ const Login = () => {
 
             {/* TAB: LOGIN */}
             <TabsContent value="login" className="space-y-4">
-              {/* Google Login - Usando Google Sign-In (ID Token) */}
-              <div className="w-full flex justify-center">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  text="signin"
-                  size="large"
-                />
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-muted"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">ou</span>
-                </div>
-              </div>
-
               {/* Email Login */}
               <form onSubmit={handleEmailLogin} className="space-y-4">
                 <div className="space-y-2">
@@ -216,25 +164,6 @@ const Login = () => {
 
             {/* TAB: SIGNUP */}
             <TabsContent value="signup" className="space-y-4">
-              {/* Google Signup - Usando Google Sign-In (ID Token) */}
-              <div className="w-full flex justify-center">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={handleGoogleError}
-                  text="signup_with"
-                  size="large"
-                />
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-muted"></div>
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">ou</span>
-                </div>
-              </div>
-
               {/* Email Signup */}
               <form onSubmit={handleEmailSignup} className="space-y-3">
                 <div className="space-y-2">
