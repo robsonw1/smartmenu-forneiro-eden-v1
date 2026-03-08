@@ -129,18 +129,22 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
     try {
       // 🔒 Normalizar email para evitar múltiplas contas (URGENTE #6)
       const normalizedEmail = normalizeEmail(email);
-      console.log('🔍 [FIND-OR-CREATE] Buscando cliente:', normalizedEmail);
+      console.log('🔍 [FIND-OR-CREATE] START - Email:', normalizedEmail, '| Name:', name, '| isRegistered:', isRegistered);
       
       // Procurar cliente existente
+      console.log('🔍 [FIND-OR-CREATE] Query SELECT iniciada...');
       const { data, error } = await (supabase as any)
         .from('customers')
-        .select('*')
+        .select()  // Sem o '*' para evitar problemas
         .eq('email', normalizedEmail)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('❌ Erro ao buscar cliente:', error);
-        return null;
+      console.log('🔍 [FIND-OR-CREATE] Query SELECT resultado:', { data, error });
+
+      if (error) {
+        if (error.code !== 'PGRST116') {
+          console.error('❌ Erro ao buscar cliente:', error.message);
+        }
       }
 
       if (data) {
@@ -148,24 +152,35 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
         const customer = mapCustomerFromDB(data);
         console.log('📊 Cliente mapeado:', customer);
         set({ currentCustomer: customer, points: customer.totalPoints });
+        console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente encontrado:', customer.email);
         return customer;
       }
 
       // Criar novo cliente (Google OAuth = registrado, Manual = não registrado)
-      console.log('🆕 Criando novo cliente...', { email: normalizedEmail, name, isRegistered });
+      console.log('🆕 [FIND-OR-CREATE] INSERT iniciado...', { email: normalizedEmail, name, isRegistered });
+      const insertData = {
+        email: normalizedEmail, 
+        name: name || null,
+        is_registered: isRegistered ?? false, 
+        created_at: new Date().toISOString()
+      };
+      console.log('🆕 [FIND-OR-CREATE] Dados para INSERT:', insertData);
+
       const { data: newCustomer, error: createError } = await (supabase as any)
         .from('customers')
-        .insert([{ 
-          email: normalizedEmail, 
-          name: name || null,
-          is_registered: isRegistered ?? false, 
-          created_at: new Date() 
-        }])
-        .select('*')
+        .insert([insertData])
+        .select()  // Sem o '*'
         .maybeSingle();
 
+      console.log('🆕 [FIND-OR-CREATE] INSERT resultado:', { newCustomer, createError });
+
       if (createError) {
-        console.error('❌ Erro ao criar cliente:', createError);
+        console.error('❌ [FIND-OR-CREATE] Erro ao criar cliente:', createError);
+        return null;
+      }
+
+      if (!newCustomer) {
+        console.error('❌ [FIND-OR-CREATE] Nenhum cliente retornado após INSERT');
         return null;
       }
 
@@ -176,25 +191,30 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
       
       // Se registrado via Google, adicionar signup bonus
       if (isRegistered) {
-        console.log('🎁 Adicionando signup bonus...');
+        console.log('🎁 [FIND-OR-CREATE] Adicionando signup bonus...');
         await get().addSignupBonus(normalizedEmail);
+        
         // Recarregar cliente para pegar pontos atualizados
+        console.log('🔄 [FIND-OR-CREATE] Recarregando cliente com bonus...');
         const { data: updated } = await (supabase as any)
           .from('customers')
-          .select('*')
+          .select()
           .eq('email', normalizedEmail)
           .maybeSingle();
+          
         if (updated) {
           const updatedCustomer = mapCustomerFromDB(updated);
           console.log('📊 Cliente atualizado com bonus:', updatedCustomer);
           set({ currentCustomer: updatedCustomer, points: updatedCustomer.totalPoints });
+          console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente com bonus:', updatedCustomer.email);
           return updatedCustomer;
         }
       }
       
+      console.log('✅ [FIND-OR-CREATE] FINALIZADO - Cliente novo:', customer?.email);
       return customer;
     } catch (error) {
-      console.error('❌ Erro em findOrCreateCustomer:', error);
+      console.error('❌ [FIND-OR-CREATE] EXCEÇÃO:', error);
       return null;
     }
   },
